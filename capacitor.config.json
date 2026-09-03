@@ -1,0 +1,12 @@
+{
+  "appId": "es.altaico.dndcombate",
+  "appName": "Combates D&D",
+  "webDir": "app",
+  "android": {
+    "allowMixedContent": false,
+    "backgroundColor": "#12141a"
+  },
+  "server": {
+    "androidScheme": "https"
+  }
+}

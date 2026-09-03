@@ -1,0 +1,19 @@
+{
+  "name": "dnd-combate",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Gestor de combates de D&D para el DM (PWA offline + APK Android via Capacitor)",
+  "scripts": {
+    "test": "node tests/e2e.mjs app/index.html tests/shots",
+    "serve": "node tests/serve.mjs",
+    "android:sync": "cap sync android",
+    "android:apk": "powershell -ExecutionPolicy Bypass -File ./build-apk.ps1 -Release"
+  },
+  "devDependencies": {
+    "@capacitor/android": "^6.2.2",
+    "@capacitor/cli": "^6.2.2",
+    "@capacitor/core": "^6.2.2",
+    "playwright": "^1.62.1"
+  },
+  "license": "MIT"
+}

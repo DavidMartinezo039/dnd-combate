@@ -1,0 +1,1437 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#12141a">
+<meta name="color-scheme" content="dark">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Combates">
+<meta name="description" content="Gestor de combates de D&amp;D 5e para el Dungeon Master. Funciona sin conexión.">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%2312141a'/%3E%3Cpath d='M32 6 54 19v26L32 58 10 45V19z' fill='%23ffbe55'/%3E%3Ctext x='32' y='40' font-size='22' font-weight='700' text-anchor='middle' font-family='sans-serif' fill='%231d1400'%3E20%3C/text%3E%3C/svg%3E">
+<title>Combates D&amp;D</title>
+<style>
+:root {
+  --bg: #12141a;
+  --surface: #1a1d25;
+  --surface-2: #232733;
+  --line: #313747;
+  --text: #f4f5f7;
+  --muted: #a6afbf;
+  --dim: #6f7889;
+  --player: #63a3ff;
+  --enemy: #ff5f66;
+  --ally: #43d98d;
+  --accent: #ffbe55;
+  --accent-ink: #1d1400;
+  --dmg: #d9414a;
+  --heal: #22b874;
+  --heal-ink: #041509;
+  --radius: 14px;
+  --safe-t: env(safe-area-inset-top, 0px);
+  --safe-b: env(safe-area-inset-bottom, 0px);
+  --safe-l: env(safe-area-inset-left, 0px);
+  --safe-r: env(safe-area-inset-right, 0px);
+}
+* { box-sizing: border-box; min-width: 0; }
+html { overflow-x: hidden; background: var(--bg); -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0; background: var(--bg); color: var(--text);
+  font: 16px/1.35 system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  overflow-x: hidden; min-height: 100vh;
+}
+body.no-scroll { overflow: hidden; }
+[hidden] { display: none !important; }
+h1, h2, h3, p { margin: 0; }
+h2 { font-size: 17px; font-weight: 700; }
+button, input, select, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; -webkit-tap-highlight-color: transparent; touch-action: manipulation; user-select: none; -webkit-user-select: none; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+input, select, textarea {
+  width: 100%; min-height: 48px; padding: 8px 12px; border-radius: 12px;
+  border: 1px solid var(--line); background: #0d0f14; color: var(--text); font-size: 17px;
+}
+textarea { resize: vertical; line-height: 1.4; }
+input::placeholder, textarea::placeholder { color: #8b93a3; }
+select { appearance: none; -webkit-appearance: none; padding-right: 36px;
+  background-image: linear-gradient(45deg, transparent 50%, var(--muted) 50%), linear-gradient(135deg, var(--muted) 50%, transparent 50%);
+  background-position: calc(100% - 20px) 50%, calc(100% - 14px) 50%; background-size: 6px 6px; background-repeat: no-repeat; }
+
+/* ---------- botones ---------- */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  min-height: 48px; padding: 0 14px; border-radius: 12px; border: 1px solid var(--line);
+  background: var(--surface-2); color: var(--text); font-weight: 600; font-size: 16px; line-height: 1.2;
+  white-space: nowrap;
+}
+.btn:active { filter: brightness(1.18); }
+.btn:disabled { opacity: 1; cursor: default; filter: none; color: #7a8394; background: #16181f; border-color: #232834; }
+.btn-primary { background: var(--accent); color: var(--accent-ink); border-color: transparent; }
+.btn-xl { min-height: 60px; font-size: 20px; font-weight: 800; border-radius: 16px; }
+.btn-dmg { background: var(--dmg); color: #fff; border-color: transparent; }
+.btn-heal { background: var(--heal); color: var(--heal-ink); border-color: transparent; }
+.btn-danger { color: #ff8085; border-color: #5a2f33; background: #2a1a1c; }
+.btn-danger-solid { background: var(--dmg); color: #fff; border-color: transparent; }
+.btn-sm { min-height: 44px; padding: 0 12px; font-size: 15px; }
+.full { width: 100%; }
+.icon-btn {
+  width: 48px; height: 48px; flex: 0 0 48px; border-radius: 12px; border: 1px solid var(--line);
+  background: var(--surface-2); color: var(--text); font-size: 22px; display: inline-flex; align-items: center; justify-content: center;
+}
+.btn-row { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 10px; }
+
+/* ---------- layout ---------- */
+.screen { display: flex; flex-direction: column; min-height: 100vh; }
+.topbar {
+  position: sticky; top: 0; z-index: 21; background: rgba(18,20,26,.94); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--line);
+  padding: calc(8px + var(--safe-t)) calc(12px + var(--safe-r)) 8px calc(12px + var(--safe-l));
+}
+.topbar-inner { max-width: 640px; margin: 0 auto; display: flex; align-items: center; gap: 8px; min-height: 48px; }
+/* El nombre puede ocupar dos lineas antes de recortarse: asi no se corta en "Preparado" (donde la
+   pildora de estado es mas ancha) un nombre que si cabe entero en "Ronda N". */
+.topbar-title {
+  flex: 1; font-size: 17px; font-weight: 800; line-height: 1.15; overflow: hidden; overflow-wrap: anywhere;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+}
+.round-pill {
+  flex: 0 0 auto; padding: 8px 10px; border-radius: 999px; font-weight: 800; font-size: 14px; letter-spacing: .2px;
+  background: var(--surface-2); border: 1px solid var(--line); color: var(--muted); white-space: nowrap;
+}
+.round-pill.live { background: var(--accent); color: var(--accent-ink); border-color: transparent; }
+.content { flex: 1; width: 100%; max-width: 640px; margin: 0 auto; padding: 12px calc(12px + var(--safe-r)) 24px calc(12px + var(--safe-l)); }
+.content-combat { padding-bottom: calc(150px + var(--safe-b)); }
+.stack { display: flex; flex-direction: column; gap: 12px; }
+.stack-sm { display: flex; flex-direction: column; gap: 8px; }
+.stack-lg { display: flex; flex-direction: column; gap: 16px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px; }
+.lbl { font-size: 14px; color: var(--muted); font-weight: 600; }
+.hint { font-size: 14px; color: var(--muted); line-height: 1.4; }
+.center { text-align: center; }
+.empty { text-align: center; color: var(--muted); padding: 40px 12px; font-size: 17px; line-height: 1.5; }
+.form-error { color: #ff8085; font-size: 14px; font-weight: 600; min-height: 0; }
+.form-error:empty { display: none; }
+.form-ok { color: var(--ally); font-size: 14px; font-weight: 600; }
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+.field { display: flex; flex-direction: column; gap: 4px; }
+
+/* ---------- lista de combates ---------- */
+.item {
+  display: flex; align-items: center; gap: 10px; background: var(--surface); border: 1px solid var(--line);
+  border-radius: var(--radius); padding: 12px 10px 12px 14px; cursor: pointer; min-height: 72px;
+}
+.item:active { background: var(--surface-2); }
+.item-main { flex: 1; display: flex; flex-direction: column; gap: 4px; }
+.item-name { font-size: 18px; font-weight: 700; overflow-wrap: anywhere; }
+.item-status { font-size: 14px; color: var(--muted); }
+.item-status.live { color: var(--accent); font-weight: 700; }
+
+/* ---------- filas de combatientes ---------- */
+.rows { display: flex; flex-direction: column; gap: 8px; }
+.row {
+  display: grid; grid-template-columns: 54px 1fr; align-items: center; gap: 10px;
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 10px 12px 10px 7px; min-height: 72px; cursor: pointer; position: relative; overflow: hidden;
+  border-left: 5px solid var(--kind);
+}
+.row:active { background: var(--surface-2); }
+.row.kind-player { --kind: var(--player); }
+.row.kind-enemy { --kind: var(--enemy); }
+.row.kind-ally { --kind: var(--ally); }
+/* Fila con el turno: aro ambar, pero la franja lateral mantiene el color del tipo. */
+.row.active { background: #2b2312; border-color: var(--accent); border-left-color: var(--kind); box-shadow: 0 0 0 1px var(--accent); }
+/* Caido: sin opacity global (apagaba el aro de turno, la franja de bando y la etiqueta TURNO).
+   Fondo propio, nombre tachado, vida en rojo y etiqueta CAIDO en la propia fila. */
+.row.down { background: #16181f; }
+.row.down .row-name { text-decoration: line-through; color: var(--muted); }
+.row.down .row-hp { color: #ff8085; }
+.row.active.down { background: #2b2312; }
+.down-tag { flex: 0 0 auto; background: #3a1c1f; color: #ff8085; font-size: 11px; font-weight: 800; padding: 3px 6px; border-radius: 6px; letter-spacing: .5px; }
+/* Columna de iniciativa: numero grande + etiqueta "INI". El tipo (jugador/enemigo/aliado)
+   lo indica la franja de color lateral, no una abreviatura apretada. */
+.row-init-col {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+  width: 54px; height: 54px; border-radius: 14px; background: #0d0f14; border: 1px solid var(--line);
+}
+.row-init { font-size: 23px; font-weight: 800; color: var(--text); line-height: 1; font-variant-numeric: tabular-nums; }
+.row-ini-label { font-size: 10px; font-weight: 800; letter-spacing: .14em; color: #8b93a3; line-height: 1; }
+.row.active .row-init-col { background: var(--accent); border-color: var(--accent); }
+.row.active .row-init { color: var(--accent-ink); }
+.row.active .row-ini-label { color: rgba(0,0,0,.62); }
+.row-main { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.row-name-line { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.row-name { flex: 1 1 auto; min-width: 0; font-size: 17px; font-weight: 700; line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.turn-tag { flex: 0 0 auto; background: var(--accent); color: var(--accent-ink); font-size: 11px; font-weight: 800; padding: 3px 6px; border-radius: 6px; letter-spacing: .5px; }
+.row-ac { flex: 0 0 auto; display: inline-flex; align-items: center; gap: 3px; font-size: 14px; font-weight: 700; color: var(--muted); font-variant-numeric: tabular-nums; }
+.ico-shield { width: 15px; height: 15px; flex: none; fill: none; stroke: currentColor; stroke-width: 2; stroke-linejoin: round; }
+.row-note { flex: 0 0 auto; font-size: 14px; color: var(--muted); }
+.row-conditions { display: flex; flex-wrap: wrap; gap: 4px; }
+.row-conditions:empty { display: none; }
+.chip { font-size: 12px; font-weight: 700; padding: 2px 7px; border-radius: 999px; background: #3a2b52; color: #d9c6ff; border: 1px solid #5a4380; }
+/* Linea de vida a ancho completo: barra + (temporal) + texto actual/max bien visible. */
+.row-hp-line { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.row-hp-line .hpbar { flex: 1 1 auto; width: auto; min-width: 0; height: 9px; }
+.row-hp-line .down-tag { margin-right: auto; }
+.row-hp { flex: 0 0 auto; font-size: 16px; font-weight: 800; font-variant-numeric: tabular-nums; white-space: nowrap; min-width: 58px; text-align: right; }
+.row-hp.none { min-width: 0; color: var(--muted); font-weight: 700; }
+.row-nohp { flex: 1 1 auto; min-width: 0; font-size: 14px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.row-temp { flex: 0 0 auto; font-size: 12px; font-weight: 800; color: #7fd6ff; background: rgba(127,214,255,.14); padding: 2px 6px; border-radius: 6px; white-space: nowrap; }
+.hpbar { width: 64px; height: 6px; border-radius: 999px; background: #0d0f14; border: 1px solid var(--line); overflow: hidden; }
+.hpbar i { display: block; height: 100%; background: var(--heal); border-radius: 999px; transition: width .2s; }
+.hpbar i.mid { background: var(--accent); }
+.hpbar i.low { background: var(--dmg); }
+.hpbar.big { width: 100%; height: 10px; }
+@keyframes flashDmg { 0% { background: #6b1e24; } 100% { background: transparent; } }
+@keyframes flashHeal { 0% { background: #175236; } 100% { background: transparent; } }
+.row.flash-dmg::after, .row.flash-heal::after { content: ""; position: absolute; inset: 0; pointer-events: none; animation: flashDmg .6s ease-out; }
+.row.flash-heal::after { animation-name: flashHeal; }
+
+/* ---------- barra inferior fija ---------- */
+.bar {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 9;
+  background: rgba(18,20,26,.97); border-top: 1px solid var(--line);
+  padding: 8px calc(12px + var(--safe-r)) calc(8px + var(--safe-b)) calc(12px + var(--safe-l));
+}
+.bar-inner { max-width: 640px; margin: 0 auto; display: flex; flex-direction: column; gap: 8px; }
+.bar-row { display: flex; gap: 8px; }
+.bar-row .btn { flex: 1; }
+.bar-row .btn-prev { flex: 0 0 auto; font-size: 16px; font-weight: 700; padding: 0 14px; letter-spacing: .2px; }
+.bar-row .btn-next { flex: 1 1 auto; font-size: 18px; }
+.bar-row.pre .btn-next { flex: 0 0 auto; }
+.bar-row-3 .btn { min-height: 48px; font-size: 15px; padding: 0 6px; }
+
+/* ---------- overlays ---------- */
+/* El velo (20) tapa la barra inferior pero NO la cabecera (21): con la hoja abierta el DM sigue
+   leyendo la ronda y el nombre del combate. La hoja (21) va despues en el DOM, asi que gana al empatar. */
+.backdrop { position: fixed; inset: 0; z-index: 20; background: rgba(0,0,0,.6); }
+@keyframes slideUp { from { transform: translateY(32px); } to { transform: none; } }
+.sheet {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 21; margin: 0 auto; max-width: 640px;
+  background: var(--surface); border: 1px solid var(--line); border-bottom: 0; border-radius: 20px 20px 0 0;
+  /* Tope bajo a proposito: la hoja nunca tapa la cabecera ni las 2-3 primeras filas (el DM tiene
+     que ver de quien es el turno mientras aplica dano). El contenido hace scroll dentro. */
+  max-height: 72vh; max-height: 72dvh; overflow-y: auto; overflow-x: hidden; -webkit-overflow-scrolling: touch;
+  padding: 6px calc(16px + var(--safe-r)) calc(16px + var(--safe-b)) calc(16px + var(--safe-l));
+  display: flex; flex-direction: column; gap: 10px; animation: slideUp .15s ease-out;
+  box-shadow: 0 -8px 30px rgba(0,0,0,.5);
+}
+.sheet-grip { width: 40px; height: 4px; border-radius: 999px; background: var(--line); margin: 4px auto 0; flex: 0 0 auto; }
+.sheet-head { display: flex; align-items: flex-start; gap: 10px; }
+.sheet-title-wrap { flex: 1; display: flex; flex-direction: column; gap: 4px; padding-top: 2px; }
+.sheet-title { font-size: 22px; font-weight: 800; line-height: 1.15; overflow-wrap: anywhere; }
+.kind-badge { align-self: flex-start; font-size: 11px; font-weight: 800; letter-spacing: .6px; text-transform: uppercase; padding: 2px 7px; border-radius: 6px; background: var(--surface-2); color: var(--kind, var(--muted)); border: 1px solid var(--line); }
+.sheet.kind-player { --kind: var(--player); }
+.sheet.kind-enemy { --kind: var(--enemy); }
+.sheet.kind-ally { --kind: var(--ally); }
+.sheet-hp { display: flex; flex-direction: column; gap: 6px; }
+.sheet-hp-line { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.sheet-hp-num { font-size: 34px; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums; }
+.sheet-hp-num.nohp { font-size: 20px; color: var(--muted); }
+.sheet-temp { font-size: 15px; font-weight: 700; color: #7fd6ff; }
+.sheet-down { font-size: 13px; font-weight: 800; color: #ff8085; letter-spacing: .5px; background: #3a1c1f; padding: 2px 8px; border-radius: 6px; }
+.sheet-meta { margin-left: auto; font-size: 14px; color: var(--muted); font-weight: 600; }
+.quick { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; }
+.quick button {
+  min-height: 44px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface-2); color: var(--text);
+  font-weight: 800; font-size: 17px; padding: 0; font-variant-numeric: tabular-nums;
+}
+.quick button:active { background: var(--line); }
+.amount-row { display: grid; grid-template-columns: 88px 1fr 1fr; gap: 8px; }
+.amount-row input { min-height: 60px; font-size: 24px; font-weight: 800; text-align: center; padding: 0 6px; border-radius: 16px; }
+.amount-row input::placeholder { font-size: 16px; font-weight: 600; }
+.inline-form { display: grid; grid-template-columns: 96px 1fr 84px; gap: 8px; align-items: center; }
+.lbl-inline { font-size: 14px; color: var(--muted); font-weight: 700; line-height: 1.15; }
+.inline-form input { min-height: 48px; }
+.sec-label { font-size: 13px; color: var(--muted); font-weight: 700; text-transform: uppercase; letter-spacing: .6px; margin-top: 2px; }
+.cond-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.cond {
+  min-height: 44px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface-2); color: var(--muted);
+  font-size: 13.5px; font-weight: 700; padding: 0 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.cond[aria-pressed="true"] { background: #4a3470; border-color: #8a68c8; color: #f1e8ff; }
+.divider { height: 1px; background: var(--line); margin: 2px 0; }
+
+.modal-wrap { position: fixed; inset: 0; z-index: 40; background: rgba(0,0,0,.65); display: flex; align-items: center; justify-content: center; padding: 20px; }
+.modal { width: 100%; max-width: 420px; background: var(--surface); border: 1px solid var(--line); border-radius: 18px; padding: 20px; display: flex; flex-direction: column; gap: 14px; box-shadow: 0 10px 40px rgba(0,0,0,.6); }
+.modal h2 { font-size: 20px; overflow-wrap: anywhere; }
+.modal p { color: var(--muted); font-size: 15px; line-height: 1.45; overflow-wrap: anywhere; }
+.modal p:empty { display: none; }
+
+/* Aviso flotante: SIEMPRE anclado abajo (por encima de la barra de botones), nunca sobre la
+   cabecera ni las primeras filas, y sin capturar toques (pointer-events: none). */
+.toast {
+  position: fixed; left: 50%; bottom: calc(16px + var(--safe-b)); transform: translateX(-50%); z-index: 60;
+  background: #f4f5f7; color: #12141a; font-weight: 700; font-size: 15px; line-height: 1.2; padding: 11px 18px; border-radius: 999px;
+  box-shadow: 0 6px 24px rgba(0,0,0,.55); pointer-events: none; max-width: calc(100% - 32px); text-align: center;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; animation: toastIn .18s ease-out;
+}
+@keyframes toastIn { from { opacity: 0; transform: translate(-50%, 10px); } to { opacity: 1; transform: translate(-50%, 0); } }
+
+/* ---------- ajustes ---------- */
+.player-item { display: flex; align-items: center; gap: 8px; background: var(--surface-2); border: 1px solid var(--line); border-radius: 12px; padding: 8px 8px 8px 12px; }
+.player-main { flex: 1; display: flex; flex-direction: column; gap: 2px; }
+.player-name { font-weight: 700; font-size: 16px; overflow-wrap: anywhere; }
+.player-sub { font-size: 13px; color: var(--muted); }
+.quick-players { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip-btn {
+  min-height: 44px; padding: 0 14px; border-radius: 999px; border: 1px solid #2f4a78; background: #1c2a44; color: #bcd4ff;
+  font-weight: 700; font-size: 15px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.chip-btn:active { background: #2a3d63; }
+</style>
+</head>
+<body>
+<main id="app">
+
+<!-- ======================= LISTA DE COMBATES ======================= -->
+<section class="screen" id="screen-list" data-testid="screen-list">
+  <header class="topbar"><div class="topbar-inner">
+    <h1 class="topbar-title">Combates</h1>
+    <button type="button" class="icon-btn" id="open-settings" data-testid="open-settings" aria-label="Ajustes" title="Ajustes">⚙</button>
+  </div></header>
+  <div class="content stack">
+    <button type="button" class="btn btn-primary btn-xl full" id="new-combat" data-testid="new-combat">+ Nuevo combate</button>
+    <form class="card stack" id="new-combat-form" novalidate hidden>
+      <label class="lbl" for="combat-name-input">Nombre del combate</label>
+      <input id="combat-name-input" data-testid="combat-name-input" placeholder="Emboscada en el camino" maxlength="80" autocomplete="off" enterkeyhint="done">
+      <p class="form-error" id="new-combat-error"></p>
+      <div class="btn-row">
+        <button type="button" class="btn" id="combat-cancel" data-testid="combat-cancel">Cancelar</button>
+        <button type="submit" class="btn btn-primary" id="combat-create" data-testid="combat-create">Crear</button>
+      </div>
+    </form>
+    <div class="stack" id="combat-list"></div>
+    <p class="empty" id="list-empty" hidden>No hay combates todavía.<br>Crea uno y añade jugadores y enemigos.</p>
+  </div>
+</section>
+
+<!-- ======================= COMBATE ======================= -->
+<section class="screen" id="screen-combat" data-testid="screen-combat" hidden>
+  <header class="topbar"><div class="topbar-inner">
+    <button type="button" class="icon-btn" id="back-to-list" data-testid="back-to-list" aria-label="Volver a la lista">←</button>
+    <h1 class="topbar-title" id="combat-title" data-testid="combat-title"></h1>
+    <span class="round-pill" id="round-label" data-testid="round-label" aria-live="polite">Preparado</span>
+  </div></header>
+  <div class="content content-combat">
+    <div class="rows" id="combatant-list"></div>
+    <p class="empty" id="combat-empty" hidden>Sin combatientes.<br>Pulsa <b>Añadir</b> para meter jugadores y enemigos.</p>
+  </div>
+  <div class="bar" id="combat-bar"><div class="bar-inner">
+    <div class="bar-row" id="turn-row">
+      <button type="button" class="btn btn-xl btn-primary" id="start-combat" data-testid="start-combat">▶ Iniciar combate</button>
+      <button type="button" class="btn btn-xl btn-prev" id="prev-turn" data-testid="prev-turn" aria-label="Turno anterior" title="Turno anterior">◀ Anterior</button>
+      <button type="button" class="btn btn-xl btn-primary btn-next" id="next-turn" data-testid="next-turn" aria-label="Siguiente turno" title="Siguiente turno">Siguiente turno ▶</button>
+    </div>
+    <div class="bar-row bar-row-3">
+      <button type="button" class="btn" id="undo" data-testid="undo" disabled>↶ Deshacer</button>
+      <button type="button" class="btn" id="reset-combat" data-testid="reset-combat">↺ Reiniciar</button>
+      <button type="button" class="btn" id="add-combatant" data-testid="add-combatant">+ Añadir</button>
+    </div>
+  </div></div>
+</section>
+
+<!-- ======================= AJUSTES ======================= -->
+<section class="screen" id="screen-settings" data-testid="screen-settings" hidden>
+  <header class="topbar"><div class="topbar-inner">
+    <button type="button" class="icon-btn" id="settings-back" data-testid="settings-back" aria-label="Volver">←</button>
+    <h1 class="topbar-title">Ajustes</h1>
+  </div></header>
+  <div class="content stack-lg">
+    <section class="card stack">
+      <h2>Jugadores habituales</h2>
+      <p class="hint">Plantillas para añadir a tu grupo a cualquier combate con un toque. La iniciativa se tira en cada combate.</p>
+      <div class="stack-sm" id="player-list"></div>
+      <p class="hint" id="players-empty" hidden>Aún no hay jugadores guardados.</p>
+      <form class="stack-sm" id="player-form" novalidate>
+        <input id="player-name" data-testid="player-name" placeholder="Nombre del personaje" maxlength="60" autocomplete="off">
+        <div class="grid-2">
+          <input id="player-hpmax" data-testid="player-hpmax" inputmode="numeric" placeholder="Vida máx." autocomplete="off">
+          <input id="player-ac" data-testid="player-ac" inputmode="numeric" placeholder="CA" autocomplete="off">
+        </div>
+        <p class="form-error" id="player-error"></p>
+        <div class="btn-row">
+          <button type="button" class="btn" id="player-cancel-edit" hidden>Cancelar</button>
+          <button type="submit" class="btn btn-primary" id="player-add" data-testid="player-add">Añadir jugador</button>
+        </div>
+      </form>
+    </section>
+
+    <section class="card stack">
+      <h2>Exportar</h2>
+      <p class="hint">Genera una copia de todos los datos en JSON para guardarla o pasarla a otro dispositivo.</p>
+      <button type="button" class="btn" id="export-json" data-testid="export-json">Generar JSON</button>
+      <textarea id="export-output" data-testid="export-output" rows="6" readonly aria-label="JSON exportado" placeholder="Pulsa «Generar JSON» y aquí aparecerá la copia de todos los datos."></textarea>
+      <button type="button" class="btn" id="copy-export" data-testid="copy-export" disabled>Copiar al portapapeles</button>
+    </section>
+
+    <section class="card stack">
+      <h2>Importar</h2>
+      <p class="hint">Pega un JSON exportado. Sustituye todos los datos actuales.</p>
+      <textarea id="import-input" data-testid="import-input" rows="5" placeholder='{"version":1,"combats":[...]}' aria-label="JSON a importar"></textarea>
+      <p class="form-error" id="import-error" data-testid="import-error" role="alert"></p>
+      <p class="form-ok" id="import-ok" hidden></p>
+      <button type="button" class="btn" id="import-apply" data-testid="import-apply">Importar</button>
+    </section>
+
+    <section class="card stack">
+      <h2>Zona peligrosa</h2>
+      <button type="button" class="btn btn-danger" id="wipe-all" data-testid="wipe-all">Borrar todos los datos</button>
+    </section>
+    <p class="hint center">dnd-combate · funciona sin conexión · los datos se guardan en este dispositivo</p>
+  </div>
+</section>
+</main>
+
+<!-- ======================= OVERLAYS ======================= -->
+<div class="backdrop" id="backdrop" hidden></div>
+
+<!-- Hoja de acciones del combatiente -->
+<div class="sheet" id="action-sheet" data-testid="action-sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-name" hidden>
+  <div class="sheet-grip" aria-hidden="true"></div>
+  <div class="sheet-head">
+    <div class="sheet-title-wrap">
+      <span class="kind-badge" id="sheet-kind"></span>
+      <h2 class="sheet-title" id="sheet-name" data-testid="sheet-name"></h2>
+    </div>
+    <button type="button" class="icon-btn" id="close-sheet" data-testid="close-sheet" aria-label="Cerrar">✕</button>
+  </div>
+  <div class="sheet-hp">
+    <div class="sheet-hp-line">
+      <span class="sheet-hp-num" id="sheet-hp-text"></span>
+      <span class="sheet-temp" id="sheet-temp" hidden></span>
+      <span class="sheet-down" id="sheet-down" hidden>CAÍDO</span>
+      <span class="sheet-meta" id="sheet-meta"></span>
+    </div>
+    <div class="hpbar big" id="sheet-hpbar-wrap"><i id="sheet-hpbar"></i></div>
+    <p class="hint" id="sheet-nohp" hidden>Sin vida gestionada. Fija una vida exacta o una vida máxima para poder aplicar daño.</p>
+  </div>
+  <div class="quick" id="quick-amounts" aria-label="Cantidades rápidas"></div>
+  <form class="amount-row" id="amount-form" novalidate>
+    <input id="amount-input" data-testid="amount-input" inputmode="numeric" pattern="[0-9]*" placeholder="Cant." aria-label="Cantidad" autocomplete="off" enterkeyhint="done">
+    <button type="submit" class="btn btn-xl btn-dmg" id="apply-damage" data-testid="apply-damage">− Daño</button>
+    <button type="button" class="btn btn-xl btn-heal" id="apply-heal" data-testid="apply-heal">+ Curar</button>
+  </form>
+  <form class="inline-form" id="set-hp-form" novalidate>
+    <label class="lbl-inline" for="set-hp-input">Vida exacta</label>
+    <input id="set-hp-input" data-testid="set-hp-input" inputmode="numeric" autocomplete="off" enterkeyhint="done">
+    <button type="submit" class="btn" id="set-hp" data-testid="set-hp">Fijar</button>
+  </form>
+  <div class="sec-label">Condiciones</div>
+  <div class="cond-grid" id="cond-grid"></div>
+  <button type="button" class="btn full" id="sheet-more" data-testid="sheet-more" aria-expanded="false" aria-controls="sheet-more-panel">Más opciones ▾</button>
+  <div class="stack-sm" id="sheet-more-panel" hidden>
+    <form class="inline-form" id="set-hpmax-form" novalidate>
+      <label class="lbl-inline" for="set-hpmax-input">Vida máxima</label>
+      <input id="set-hpmax-input" data-testid="set-hpmax-input" inputmode="numeric" autocomplete="off" enterkeyhint="done">
+      <button type="submit" class="btn" id="set-hpmax" data-testid="set-hpmax">Fijar</button>
+    </form>
+    <form class="inline-form" id="set-temp-form" novalidate>
+      <label class="lbl-inline" for="set-temp-input">HP temporal</label>
+      <input id="set-temp-input" data-testid="set-temp-input" inputmode="numeric" autocomplete="off" enterkeyhint="done">
+      <button type="submit" class="btn" id="set-temp" data-testid="set-temp">Fijar</button>
+    </form>
+    <form class="inline-form" id="set-init-form" novalidate>
+      <label class="lbl-inline" for="set-init-input">Iniciativa</label>
+      <input id="set-init-input" data-testid="set-init-input" inputmode="numeric" autocomplete="off" enterkeyhint="done">
+      <button type="submit" class="btn" id="set-init" data-testid="set-init">Fijar</button>
+    </form>
+    <form class="inline-form" id="set-ac-form" novalidate>
+      <label class="lbl-inline" for="set-ac-input">CA</label>
+      <input id="set-ac-input" data-testid="set-ac-input" inputmode="numeric" autocomplete="off" enterkeyhint="done">
+      <button type="submit" class="btn" id="set-ac" data-testid="set-ac">Fijar</button>
+    </form>
+    <form class="inline-form" id="rename-form" novalidate>
+      <label class="lbl-inline" for="rename-input">Nombre</label>
+      <input id="rename-input" data-testid="rename-input" maxlength="60" autocomplete="off" enterkeyhint="done">
+      <button type="submit" class="btn" id="rename-save" data-testid="rename-save">Guardar</button>
+    </form>
+    <label class="lbl" for="notes-input">Notas</label>
+    <textarea id="notes-input" data-testid="notes-input" rows="2" placeholder="Se guardan solas al escribir"></textarea>
+    <div class="divider"></div>
+    <div class="btn-row">
+      <button type="button" class="btn" id="move-up" data-testid="move-up">▲ Subir</button>
+      <button type="button" class="btn" id="move-down" data-testid="move-down">▼ Bajar</button>
+    </div>
+    <div class="btn-row">
+      <button type="button" class="btn" id="duplicate-combatant" data-testid="duplicate-combatant">⧉ Duplicar</button>
+      <button type="button" class="btn btn-danger" id="remove-combatant" data-testid="remove-combatant">Eliminar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Formulario de nuevo combatiente -->
+<form class="sheet" id="combatant-form" data-testid="combatant-form" role="dialog" aria-modal="true" aria-labelledby="cf-title" novalidate hidden>
+  <div class="sheet-grip" aria-hidden="true"></div>
+  <div class="sheet-head">
+    <h2 class="sheet-title" id="cf-title" style="flex:1;padding-top:8px">Añadir combatiente</h2>
+    <button type="button" class="icon-btn" id="c-cancel" data-testid="c-cancel" aria-label="Cancelar">✕</button>
+  </div>
+  <div class="stack-sm" id="quick-players-wrap">
+    <span class="lbl">Jugadores habituales</span>
+    <div class="quick-players" id="quick-players"></div>
+  </div>
+  <div class="field">
+    <label class="lbl" for="c-name">Nombre</label>
+    <input id="c-name" data-testid="c-name" placeholder="Goblin" maxlength="60" autocomplete="off" enterkeyhint="next">
+  </div>
+  <div class="field">
+    <label class="lbl" for="c-kind">Tipo</label>
+    <select id="c-kind" data-testid="c-kind">
+      <option value="enemy" selected>Enemigo</option>
+      <option value="player">Jugador</option>
+      <option value="ally">Aliado</option>
+    </select>
+  </div>
+  <div class="grid-3">
+    <div class="field"><label class="lbl" for="c-init">Iniciativa</label><input id="c-init" data-testid="c-init" inputmode="numeric" autocomplete="off" enterkeyhint="next"></div>
+    <div class="field"><label class="lbl" for="c-hpmax">Vida máx.</label><input id="c-hpmax" data-testid="c-hpmax" inputmode="numeric" autocomplete="off" enterkeyhint="next"></div>
+    <div class="field"><label class="lbl" for="c-ac">CA</label><input id="c-ac" data-testid="c-ac" inputmode="numeric" autocomplete="off" enterkeyhint="next"></div>
+  </div>
+  <div class="field">
+    <label class="lbl" for="c-count">Cantidad (si es más de 1 se numeran: Goblin 1, Goblin 2…)</label>
+    <input id="c-count" data-testid="c-count" inputmode="numeric" value="1" autocomplete="off" enterkeyhint="done">
+  </div>
+  <p class="form-error" id="c-error"></p>
+  <button type="submit" class="btn btn-xl btn-primary full" id="c-save" data-testid="c-save">Guardar</button>
+</form>
+
+<!-- Menú de un combate (lista) -->
+<div class="sheet" id="combat-menu-sheet" role="dialog" aria-modal="true" aria-labelledby="combat-menu-title" hidden>
+  <div class="sheet-grip" aria-hidden="true"></div>
+  <div class="sheet-head">
+    <h2 class="sheet-title" id="combat-menu-title" style="flex:1;padding-top:8px"></h2>
+    <button type="button" class="icon-btn" id="combat-menu-close" aria-label="Cerrar">✕</button>
+  </div>
+  <div class="stack-sm" id="combat-menu-actions">
+    <button type="button" class="btn full" id="combat-rename" data-testid="combat-rename">✎ Renombrar</button>
+    <button type="button" class="btn full" id="combat-duplicate" data-testid="combat-duplicate">⧉ Duplicar</button>
+    <button type="button" class="btn full btn-danger" id="combat-delete" data-testid="combat-delete">Borrar combate</button>
+  </div>
+  <form class="stack-sm" id="combat-rename-form" novalidate hidden>
+    <label class="lbl" for="combat-rename-input">Nuevo nombre</label>
+    <input id="combat-rename-input" data-testid="combat-rename-input" maxlength="80" autocomplete="off" enterkeyhint="done">
+    <p class="form-error" id="combat-rename-error"></p>
+    <div class="btn-row">
+      <button type="button" class="btn" id="combat-rename-cancel">Cancelar</button>
+      <button type="submit" class="btn btn-primary" id="combat-rename-save" data-testid="combat-rename-save">Guardar</button>
+    </div>
+  </form>
+</div>
+
+<!-- Diálogo de confirmación -->
+<div class="modal-wrap" id="confirm-dialog" data-testid="confirm-dialog" role="alertdialog" aria-modal="true" aria-labelledby="confirm-title" hidden>
+  <div class="modal">
+    <h2 id="confirm-title"></h2>
+    <p id="confirm-message"></p>
+    <div class="btn-row">
+      <button type="button" class="btn" id="confirm-no" data-testid="confirm-no">Cancelar</button>
+      <button type="button" class="btn btn-danger-solid" id="confirm-yes" data-testid="confirm-yes">Confirmar</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+
+<script>
+(function () {
+  'use strict';
+
+  // ============================================================ constantes
+  const KEY = 'dnd-combate:v1';
+  const UNDO_MAX = 20;
+  const CONDITIONS = ['Cegado', 'Hechizado', 'Ensordecido', 'Asustado', 'Agarrado', 'Incapacitado', 'Invisible', 'Paralizado',
+    'Petrificado', 'Envenenado', 'Derribado', 'Apresado', 'Aturdido', 'Inconsciente', 'Exhausto', 'Concentrando'];
+  const KINDS = ['player', 'enemy', 'ally'];
+  const KIND_LABEL = { player: 'Jugador', enemy: 'Enemigo', ally: 'Aliado' };
+  const QUICK_AMOUNTS = [1, 2, 5, 10, 15, 20];
+
+  // ============================================================ utilidades
+  const $ = id => document.getElementById(id);
+  const $$ = (sel, root) => Array.prototype.slice.call((root || document).querySelectorAll(sel));
+  const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+  // Escapado de texto de usuario (por si en algún momento se compone HTML como cadena).
+  const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch]);
+
+  // Construcción de DOM sin HTML: todo texto de usuario entra por textContent / setAttribute.
+  function el(tag, attrs) {
+    const n = document.createElement(tag);
+    if (attrs) Object.keys(attrs).forEach(k => {
+      const v = attrs[k];
+      if (v == null || v === false) return;
+      if (k === 'class') n.className = v;
+      else if (k === 'text') n.textContent = v;
+      else if (k.slice(0, 2) === 'on' && typeof v === 'function') n.addEventListener(k.slice(2), v);
+      else n.setAttribute(k, v === true ? '' : String(v));
+    });
+    for (let i = 2; i < arguments.length; i++) appendKids(n, arguments[i]);
+    return n;
+  }
+  function appendKids(n, k) {
+    if (k == null || k === false) return;
+    if (Array.isArray(k)) { k.forEach(x => appendKids(n, x)); return; }
+    n.appendChild(k instanceof Node ? k : document.createTextNode(String(k)));
+  }
+  function clear(node) { while (node.firstChild) node.removeChild(node.firstChild); }
+  // Icono SVG inline (sin recursos externos). Se usa para el escudo de la CA en las filas.
+  const SVG_NS = 'http://www.w3.org/2000/svg';
+  function shieldIcon() {
+    const svg = document.createElementNS(SVG_NS, 'svg');
+    svg.setAttribute('viewBox', '0 0 24 24');
+    svg.setAttribute('class', 'ico-shield');
+    svg.setAttribute('aria-hidden', 'true');
+    svg.setAttribute('focusable', 'false');
+    const p = document.createElementNS(SVG_NS, 'path');
+    p.setAttribute('d', 'M12 3l7 3v6c0 4.6-3 8-7 9-4-1-7-4.4-7-9V6z');
+    svg.appendChild(p);
+    return svg;
+  }
+
+  // '' -> null (vacío) ; texto no numérico -> undefined (inválido) ; si no, entero.
+  function toInt(v) {
+    const s = String(v == null ? '' : v).trim().replace(',', '.');
+    if (s === '') return null;
+    const n = Number(s);
+    return Number.isFinite(n) ? Math.round(n) : undefined;
+  }
+  function posInt(v) { const n = toInt(v); return (n == null || !(n > 0)) ? null : n; }
+  function numOrNull(v) { return (typeof v === 'number' && Number.isFinite(v)) ? Math.round(v) : null; }
+  function plural(n, s, p) { return n + ' ' + (n === 1 ? s : p); }
+
+  // ============================================================ estado
+  function emptyState() { return { version: 1, players: [], combats: [], openCombatId: null }; }
+
+  function normCombatant(x) {
+    const hpMax = numOrNull(x.hpMax);
+    let hp = numOrNull(x.hp);
+    if (hpMax == null) hp = null; else if (hp == null) hp = hpMax; else hp = Math.max(0, Math.min(hp, hpMax));
+    return {
+      id: typeof x.id === 'string' && x.id ? x.id : uid(),
+      name: typeof x.name === 'string' && x.name.trim() ? x.name : 'Sin nombre',
+      kind: KINDS.includes(x.kind) ? x.kind : 'enemy',
+      initiative: numOrNull(x.initiative),
+      hpMax, hp,
+      tempHp: Math.max(0, numOrNull(x.tempHp) || 0),
+      ac: numOrNull(x.ac),
+      conditions: Array.isArray(x.conditions) ? x.conditions.filter(c => typeof c === 'string' && c) : [],
+      notes: typeof x.notes === 'string' ? x.notes : '',
+      order: numOrNull(x.order) == null ? 0 : numOrNull(x.order)
+    };
+  }
+  function normCombat(c) {
+    const combatants = (Array.isArray(c.combatants) ? c.combatants : []).filter(x => x && typeof x === 'object').map(normCombatant);
+    // Sin combatientes no hay combate en curso posible: "Ronda N" con la lista vacia dejaria la
+    // pantalla sin turno y sin boton Iniciar.
+    const round = combatants.length ? Math.max(0, numOrNull(c.round) || 0) : 0;
+    const activeId = round > 0 && typeof c.activeId === 'string' && combatants.some(x => x.id === c.activeId) ? c.activeId : null;
+    const now = Date.now();
+    return {
+      id: typeof c.id === 'string' && c.id ? c.id : uid(),
+      name: typeof c.name === 'string' && c.name.trim() ? c.name : 'Combate',
+      createdAt: numOrNull(c.createdAt) || now,
+      updatedAt: numOrNull(c.updatedAt) || now,
+      round, activeId, combatants,
+      // La pila de deshacer arranca vacia en cada carga (ver serializable()).
+      undo: []
+    };
+  }
+  function normPlayer(p) {
+    const hp = numOrNull(p.hpMax);
+    return { id: typeof p.id === 'string' && p.id ? p.id : uid(), name: p.name.trim(), hpMax: hp != null && hp > 0 ? hp : null, ac: numOrNull(p.ac) };
+  }
+  function normState(obj) {
+    const s = emptyState();
+    s.players = (Array.isArray(obj.players) ? obj.players : []).filter(p => p && typeof p === 'object' && typeof p.name === 'string' && p.name.trim()).map(normPlayer);
+    s.combats = obj.combats.filter(c => c && typeof c === 'object').map(normCombat);
+    s.openCombatId = typeof obj.openCombatId === 'string' && s.combats.some(c => c.id === obj.openCombatId) ? obj.openCombatId : null;
+    return s;
+  }
+
+  function load() {
+    try {
+      const raw = localStorage.getItem(KEY);
+      if (!raw) return emptyState();
+      const obj = JSON.parse(raw);
+      if (!obj || typeof obj !== 'object' || !Array.isArray(obj.combats)) return emptyState();
+      return normState(obj);
+    } catch (e) {
+      // JSON corrupto o localStorage inaccesible: arrancamos vacíos y no tocamos la clave hasta el primer cambio.
+      return emptyState();
+    }
+  }
+  function serializable(s) {
+    // La pila de deshacer NO se persiste: es una ayuda de sesion. Persistirla haria que, tras
+    // recargar, "Deshacer" revirtiese un cambio que el usuario ya daba por cerrado (y el e2e del
+    // proyecto lo comprueba: pulsa Deshacer tras recargar y espera el mismo numero de combatientes).
+    return { version: 1, players: s.players, combats: s.combats.map(c => Object.assign({}, c, { undo: [] })), openCombatId: s.openCombatId };
+  }
+  function save() {
+    try { localStorage.setItem(KEY, JSON.stringify(serializable(state))); } catch (e) { /* cuota llena o modo privado: seguimos en memoria */ }
+  }
+
+  let state = load();
+  const ui = { screen: 'list', sheetId: null, more: false, menuCombatId: null, editingPlayerId: null, notesBefore: '' };
+
+  // ============================================================ reglas de combate
+  function currentCombat() { return state.combats.find(c => c.id === state.openCombatId) || null; }
+  function findC(c, id) { return c.combatants.find(x => x.id === id) || null; }
+
+  // Orden visible: iniciativa descendente, empates por `order` ascendente, sin iniciativa al final.
+  function sorted(c) {
+    return c.combatants.slice().sort((a, b) => {
+      const an = a.initiative == null, bn = b.initiative == null;
+      if (an !== bn) return an ? 1 : -1;
+      if (!an && a.initiative !== b.initiative) return b.initiative - a.initiative;
+      return a.order - b.order;
+    });
+  }
+  function snapshot(c) { return { round: c.round, activeId: c.activeId, combatants: JSON.parse(JSON.stringify(c.combatants)) }; }
+  function pushUndo(c) { c.undo.push(snapshot(c)); }
+  // El recorte se hace SOLO cuando el cambio se confirma: si no, una mutacion que no cambia nada
+  // (y cuyo snapshot se descarta) tiraria el snapshot mas viejo de una pila llena.
+  function trimUndo(c) { if (c.undo.length > UNDO_MAX) c.undo.splice(0, c.undo.length - UNDO_MAX); }
+  function popUndo(c) {
+    const s = c.undo.pop();
+    if (!s) return false;
+    c.round = s.round; c.activeId = s.activeId; c.combatants = s.combatants;
+    return true;
+  }
+
+  // Aplica una mutación al combate abierto con snapshot de deshacer, guardado y repintado.
+  // Si fn devuelve false no ha cambiado nada: se descarta el snapshot y no se repinta.
+  function commit(fn, opts) {
+    const c = currentCombat();
+    if (!c) return false;
+    const withUndo = !(opts && opts.noUndo);
+    if (withUndo) pushUndo(c);
+    const r = fn(c);
+    if (r === false) { if (withUndo) c.undo.pop(); return false; }
+    if (withUndo) trimUndo(c);
+    c.updatedAt = Date.now();
+    save();
+    renderCombat();
+    return true;
+  }
+
+  function startCombat(c) {
+    const s = sorted(c);
+    if (!s.length) return false;
+    c.round = 1; c.activeId = s[0].id;
+  }
+  function nextTurn(c) {
+    const s = sorted(c);
+    if (!s.length) return false;
+    if (c.round === 0) return startCombat(c);
+    const i = s.findIndex(x => x.id === c.activeId);
+    if (i < 0) { c.activeId = s[0].id; return; }
+    if (i >= s.length - 1) { c.activeId = s[0].id; c.round++; }
+    else c.activeId = s[i + 1].id;
+  }
+  function prevTurn(c) {
+    const s = sorted(c);
+    if (!s.length || c.round === 0) return false;
+    const i = s.findIndex(x => x.id === c.activeId);
+    if (i <= 0) {
+      if (c.round <= 1) return false;
+      c.round--; c.activeId = s[s.length - 1].id;
+    } else c.activeId = s[i - 1].id;
+  }
+  function damage(x, n) {
+    if (x.hpMax == null) return false;
+    const absorbed = Math.min(x.tempHp, n);
+    x.tempHp -= absorbed;
+    x.hp = Math.max(0, x.hp - (n - absorbed));
+  }
+  function heal(x, n) {
+    if (x.hpMax == null) return false;
+    x.hp = Math.min(x.hpMax, x.hp + n);
+  }
+  // Sin vida gestionada, "vida exacta" hace de "vida maxima" (hp = hpMax). Con 0 no hay nada que
+  // habilitar: dejaria un 0/1 inventado y marcado como caido, asi que no hace nada.
+  function setHp(x, v) {
+    if (x.hpMax == null) { if (!(v > 0)) return false; x.hpMax = v; x.hp = v; return; }
+    x.hp = Math.max(0, Math.min(v, x.hpMax));
+  }
+  function setHpMax(x, v) {
+    if (v == null) { x.hpMax = null; x.hp = null; x.tempHp = 0; return; }
+    if (v < 1) return false;
+    if (x.hpMax == null) { x.hpMax = v; x.hp = v; return; }
+    const wasFull = x.hp >= x.hpMax;
+    x.hpMax = v;
+    x.hp = wasFull ? v : Math.min(x.hp, v);
+  }
+  function removeCombatant(c, id) {
+    if (!findC(c, id)) return false;
+    if (c.round > 0 && c.activeId === id) {
+      const s = sorted(c); const i = s.findIndex(x => x.id === id);
+      if (s.length <= 1) c.activeId = null;
+      else if (i >= s.length - 1) { c.activeId = s[0].id; c.round++; }
+      else c.activeId = s[i + 1].id;
+    }
+    c.combatants = c.combatants.filter(x => x.id !== id);
+    // Sin nadie en la lista volvemos a "Preparado": si no, el combate se queda en "Ronda N" sin turno
+    // ni boton Iniciar y no hay forma de arrancar la siguiente oleada.
+    if (!c.combatants.length) { c.round = 0; c.activeId = null; }
+  }
+  // Nombre libre al duplicar: "Goblin 1" -> "Goblin N" (primer N libre desde 1); "Ogro" -> "Ogro 2" (o primer libre desde 2).
+  function dupName(name, existing) {
+    const m = name.match(/^(.*?)\s*(\d+)$/);
+    // Si el nombre es solo un numero ("7") el prefijo queda vacio: la base es el nombre entero.
+    const numbered = !!(m && m[1]);
+    const stem = numbered ? m[1] : name;
+    const taken = new Set(existing);
+    for (let n = numbered ? 1 : 2; n < 100000; n++) {
+      const cand = (stem + ' ' + n).trim();
+      if (!taken.has(cand)) return cand;
+    }
+    return name + ' ' + uid();
+  }
+  function duplicateCombatant(c, id) {
+    const s = sorted(c); const i = s.findIndex(x => x.id === id);
+    if (i < 0) return false;
+    // Reindexamos `order` según la posición visible y hacemos hueco justo detrás del original.
+    s.forEach((x, k) => { x.order = k > i ? k + 1 : k; });
+    const o = s[i];
+    const copy = {
+      id: uid(), name: dupName(o.name, c.combatants.map(x => x.name)), kind: o.kind, initiative: o.initiative,
+      hpMax: o.hpMax, hp: o.hp, tempHp: 0, ac: o.ac, conditions: [], notes: o.notes, order: i + 1
+    };
+    c.combatants.push(copy);
+    return copy;
+  }
+  // Mover arriba/abajo. Criterio elegido: reindexamos `order` por posición visible e intercambiamos con el vecino.
+  // Si el vecino tiene otra iniciativa (o ninguna), EL QUE SE MUEVE adopta la iniciativa del vecino: así solo cambia
+  // un combatiente, el vecino se queda donde estaba y el movimiento es siempre visible en la lista.
+  function moveCombatant(c, id, dir) {
+    const s = sorted(c); const i = s.findIndex(x => x.id === id); const j = i + dir;
+    if (i < 0 || j < 0 || j >= s.length) return false;
+    s.forEach((x, k) => { x.order = k; });
+    const a = s[i], b = s[j];
+    if (a.initiative !== b.initiative) a.initiative = b.initiative;
+    a.order = j; b.order = i;
+  }
+  function addCombatants(c, d) {
+    let maxOrder = c.combatants.reduce((m, x) => Math.max(m, x.order), -1);
+    const taken = new Set(c.combatants.map(x => x.name));
+    const made = [];
+    let n = 0;
+    for (let i = 0; i < d.count; i++) {
+      let name = d.name;
+      if (d.count > 1) { do { n++; name = d.name + ' ' + n; } while (taken.has(name)); taken.add(name); }
+      made.push({ id: uid(), name, kind: d.kind, initiative: d.init, hpMax: d.hpMax, hp: d.hpMax, tempHp: 0, ac: d.ac, conditions: [], notes: '', order: ++maxOrder });
+    }
+    c.combatants.push.apply(c.combatants, made);
+    return made;
+  }
+
+  // ============================================================ navegación
+  function showScreen(name) {
+    ui.screen = name;
+    hideToast(); // un aviso de otra pantalla no debe quedarse flotando
+    $('screen-list').hidden = name !== 'list';
+    $('screen-combat').hidden = name !== 'combat';
+    $('screen-settings').hidden = name !== 'settings';
+    window.scrollTo(0, 0);
+    render();
+  }
+  function render() {
+    if (ui.screen === 'combat') renderCombat();
+    else if (ui.screen === 'settings') renderSettings();
+    else renderList();
+  }
+  function openCombat(id) {
+    if (!state.combats.some(c => c.id === id)) return;
+    state.openCombatId = id; save();
+    showScreen('combat');
+  }
+  function backToList() {
+    closeOverlays();
+    state.openCombatId = null; save();
+    showScreen('list');
+  }
+
+  const OVERLAYS = ['action-sheet', 'combatant-form', 'combat-menu-sheet'];
+  function showOverlay(id) {
+    hideToast(); // un aviso anterior no debe quedarse flotando sobre la hoja
+    OVERLAYS.forEach(o => { $(o).hidden = o !== id; });
+    $(id).scrollTop = 0;
+    $('backdrop').hidden = false;
+    document.body.classList.add('no-scroll');
+  }
+  function closeOverlays() {
+    // Si se estaban editando las notas (p.ej. se cierra con Escape) forzamos el volcado ANTES de
+    // soltar ui.sheetId: el blur dispara `change`, que es quien apila el deshacer y repinta la fila.
+    if (document.activeElement === $('notes-input')) $('notes-input').blur();
+    OVERLAYS.forEach(o => { $(o).hidden = true; });
+    $('backdrop').hidden = true;
+    document.body.classList.remove('no-scroll');
+    ui.sheetId = null; ui.menuCombatId = null;
+  }
+  function anyOverlayOpen() { return OVERLAYS.some(o => !$(o).hidden); }
+
+  let toastTimer = null;
+  function hideToast() { clearTimeout(toastTimer); const t = $('toast'); t.hidden = true; t.style.bottom = ''; }
+  // Aviso breve SIEMPRE anclado abajo: en el combate se apoya justo encima de la barra de botones y
+  // en el resto de casos en el borde inferior, de modo que nunca tapa la cabecera ni las primeras filas.
+  function toast(msg) {
+    const t = $('toast');
+    t.textContent = msg;
+    const overBar = ui.screen === 'combat' && !anyOverlayOpen();
+    t.style.bottom = overBar ? ($('combat-bar').offsetHeight + 12) + 'px' : '';
+    t.hidden = false;
+    clearTimeout(toastTimer); toastTimer = setTimeout(hideToast, 1900);
+  }
+
+  let confirmCb = null;
+  function confirmDialog(opts, onYes) {
+    $('confirm-title').textContent = opts.title;
+    $('confirm-message').textContent = opts.message || '';
+    $('confirm-yes').textContent = opts.yes || 'Confirmar';
+    $('confirm-yes').className = 'btn ' + (opts.danger === false ? 'btn-primary' : 'btn-danger-solid');
+    confirmCb = onYes;
+    $('confirm-dialog').hidden = false;
+    $('confirm-no').focus();
+  }
+  function closeConfirm() { $('confirm-dialog').hidden = true; confirmCb = null; }
+  $('confirm-yes').addEventListener('click', () => { const cb = confirmCb; closeConfirm(); if (cb) cb(); });
+  $('confirm-no').addEventListener('click', closeConfirm);
+  $('confirm-dialog').addEventListener('click', e => { if (e.target === $('confirm-dialog')) closeConfirm(); });
+
+  // ============================================================ pantalla: lista
+  function statusText(c) {
+    return plural(c.combatants.length, 'combatiente', 'combatientes') + ' · ' + (c.round > 0 ? 'Ronda ' + c.round : 'Preparado');
+  }
+  function renderList() {
+    const list = $('combat-list'); clear(list);
+    $('list-empty').hidden = state.combats.length > 0;
+    state.combats.forEach(c => {
+      const item = el('div', { class: 'item', role: 'button', tabindex: '0', 'data-testid': 'combat-item', 'data-id': c.id,
+        onclick: () => openCombat(c.id),
+        onkeydown: e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openCombat(c.id); } } },
+        el('div', { class: 'item-main' },
+          el('div', { class: 'item-name', 'data-testid': 'combat-item-name', text: c.name }),
+          el('div', { class: 'item-status' + (c.round > 0 ? ' live' : ''), 'data-testid': 'combat-item-status', text: statusText(c) })),
+        el('button', { type: 'button', class: 'icon-btn', 'data-testid': 'combat-menu', 'aria-label': 'Opciones de ' + c.name, text: '⋮',
+          onclick: e => { e.stopPropagation(); openCombatMenu(c.id); } }));
+      list.appendChild(item);
+    });
+  }
+  function showNewCombatForm(show) {
+    $('new-combat-form').hidden = !show;
+    $('new-combat').hidden = show;
+    $('new-combat-error').textContent = '';
+    if (show) { $('combat-name-input').value = ''; $('combat-name-input').focus(); }
+  }
+  $('new-combat').addEventListener('click', () => showNewCombatForm(true));
+  $('combat-cancel').addEventListener('click', () => showNewCombatForm(false));
+  $('new-combat-form').addEventListener('submit', e => {
+    e.preventDefault();
+    const name = $('combat-name-input').value.trim();
+    if (!name) { $('new-combat-error').textContent = 'Escribe un nombre para el combate.'; $('combat-name-input').focus(); return; }
+    const now = Date.now();
+    const c = { id: uid(), name, createdAt: now, updatedAt: now, round: 0, activeId: null, combatants: [], undo: [] };
+    state.combats.unshift(c);
+    showNewCombatForm(false);
+    openCombat(c.id); // guarda y abre directamente: la lista lo seguirá mostrando al volver
+  });
+
+  // --- menú de un combate
+  function openCombatMenu(id) {
+    const c = state.combats.find(x => x.id === id); if (!c) return;
+    ui.menuCombatId = id;
+    $('combat-menu-title').textContent = c.name;
+    $('combat-menu-actions').hidden = false;
+    $('combat-rename-form').hidden = true;
+    $('combat-rename-error').textContent = '';
+    showOverlay('combat-menu-sheet');
+  }
+  function menuCombat() { return state.combats.find(x => x.id === ui.menuCombatId) || null; }
+  $('combat-menu-close').addEventListener('click', closeOverlays);
+  $('combat-rename').addEventListener('click', () => {
+    const c = menuCombat(); if (!c) return;
+    $('combat-menu-actions').hidden = true;
+    $('combat-rename-form').hidden = false;
+    $('combat-rename-input').value = c.name;
+    $('combat-rename-input').focus(); $('combat-rename-input').select();
+  });
+  $('combat-rename-cancel').addEventListener('click', () => { $('combat-menu-actions').hidden = false; $('combat-rename-form').hidden = true; });
+  $('combat-rename-form').addEventListener('submit', e => {
+    e.preventDefault();
+    const c = menuCombat(); if (!c) return;
+    const name = $('combat-rename-input').value.trim();
+    if (!name) { $('combat-rename-error').textContent = 'El nombre no puede estar vacío.'; return; }
+    c.name = name; c.updatedAt = Date.now(); save();
+    closeOverlays(); renderList();
+  });
+  $('combat-duplicate').addEventListener('click', () => {
+    const src = menuCombat(); if (!src) return;
+    const copy = normCombat(JSON.parse(JSON.stringify(serializable(state).combats.find(c => c.id === src.id))));
+    const idMap = {};
+    copy.combatants.forEach(x => { const n = uid(); idMap[x.id] = n; x.id = n; });
+    copy.activeId = src.activeId ? (idMap[src.activeId] || null) : null;
+    copy.id = uid(); copy.name = dupName(src.name, state.combats.map(c => c.name)); copy.createdAt = copy.updatedAt = Date.now();
+    state.combats.splice(state.combats.indexOf(src) + 1, 0, copy);
+    save(); closeOverlays(); renderList(); toast('Duplicado como «' + copy.name + '»');
+  });
+  $('combat-delete').addEventListener('click', () => {
+    const c = menuCombat(); if (!c) return;
+    closeOverlays();
+    confirmDialog({ title: '¿Borrar «' + c.name + '»?', message: 'Se perderán sus ' + plural(c.combatants.length, 'combatiente', 'combatientes') + '. Esta acción no se puede deshacer.', yes: 'Borrar' }, () => {
+      state.combats = state.combats.filter(x => x.id !== c.id);
+      if (state.openCombatId === c.id) state.openCombatId = null;
+      save(); renderList();
+    });
+  });
+
+  // ============================================================ pantalla: combate
+  function hpPct(x) { return x.hpMax > 0 ? Math.max(0, Math.min(100, Math.round(100 * x.hp / x.hpMax))) : 0; }
+  function hpBarClass(pct) { return pct <= 25 ? 'low' : pct <= 50 ? 'mid' : ''; }
+
+  function renderRow(c, x) {
+    const active = c.round > 0 && c.activeId === x.id;
+    const down = x.hpMax != null && x.hp <= 0;
+    const row = el('div', {
+      class: 'row kind-' + x.kind + (active ? ' active' : '') + (down ? ' down' : ''), role: 'button', tabindex: '0',
+      'data-testid': 'combatant-row', 'data-id': x.id, 'data-name': x.name, 'data-kind': x.kind,
+      'data-active': active ? 'true' : 'false', 'data-down': down ? 'true' : 'false',
+      onclick: () => openSheet(x.id),
+      onkeydown: e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openSheet(x.id); } }
+    });
+    // Columna de iniciativa: numero + etiqueta "INI" (el tipo se lee en la franja de color lateral).
+    const initCol = el('div', { class: 'row-init-col' },
+      el('span', { class: 'row-init', 'data-testid': 'row-init', text: x.initiative == null ? '—' : String(x.initiative) }),
+      el('span', { class: 'row-ini-label', text: 'INI' }));
+    // Linea de vida a ancho completo dentro de la fila; si no se gestiona la vida se dice explicitamente.
+    const pct = hpPct(x);
+    // Caido: la etiqueta CAIDO ocupa el sitio de la barra (que estaria vacia) en vez de competir
+    // por la linea del nombre, donde a 360 px lo recortaba junto al escudo y la etiqueta TURNO.
+    const hpLine = x.hpMax != null
+      ? el('div', { class: 'row-hp-line' },
+          down ? el('span', { class: 'down-tag', text: 'CAÍDO' })
+               : el('div', { class: 'hpbar' }, el('i', { class: hpBarClass(pct), style: 'width:' + pct + '%' })),
+          x.tempHp > 0 ? el('span', { class: 'row-temp', title: 'Vida temporal', text: '+' + x.tempHp }) : null,
+          el('span', { class: 'row-hp', 'data-testid': 'row-hp', text: x.hp + '/' + x.hpMax }))
+      : el('div', { class: 'row-hp-line' },
+          el('span', { class: 'row-nohp', text: 'Vida no gestionada' }),
+          x.tempHp > 0 ? el('span', { class: 'row-temp', title: 'Vida temporal', text: '+' + x.tempHp }) : null,
+          el('span', { class: 'row-hp none', 'data-testid': 'row-hp', text: '—' }));
+    const main = el('div', { class: 'row-main' },
+      el('div', { class: 'row-name-line' },
+        el('div', { class: 'row-name', 'data-testid': 'row-name', text: x.name }),
+        x.ac != null ? el('span', { class: 'row-ac', title: 'Clase de armadura', 'aria-label': 'Clase de armadura ' + x.ac }, shieldIcon(), String(x.ac)) : null,
+        x.notes ? el('span', { class: 'row-note', title: 'Tiene notas', 'aria-label': 'Tiene notas', text: '✎' }) : null,
+        active ? el('span', { class: 'turn-tag', text: 'TURNO' }) : null),
+      hpLine,
+      el('div', { class: 'row-conditions', 'data-testid': 'row-conditions' }, x.conditions.map(cn => el('span', { class: 'chip', text: cn }))));
+    row.appendChild(initCol); row.appendChild(main);
+    return row;
+  }
+
+  function renderCombat() {
+    const c = currentCombat();
+    if (!c) { showScreen('list'); return; }
+    $('combat-title').textContent = c.name;
+    const rl = $('round-label');
+    rl.textContent = c.round > 0 ? 'Ronda ' + c.round : 'Preparado';
+    rl.classList.toggle('live', c.round > 0);
+    const s = sorted(c);
+    const list = $('combatant-list'); clear(list);
+    s.forEach(x => list.appendChild(renderRow(c, x)));
+    $('combat-empty').hidden = s.length > 0;
+    // Red de seguridad: sin combatientes nunca hay combate en curso (vuelve a verse "Iniciar").
+    const started = c.round > 0 && s.length > 0;
+    $('start-combat').hidden = started;
+    $('start-combat').disabled = s.length === 0;
+    // Siguiente/Anterior no se ocultan (contrato de testids): antes de iniciar quedan deshabilitados
+    // y con etiqueta corta para caber junto a "Iniciar combate" a 360 px.
+    $('turn-row').classList.toggle('pre', !started);
+    $('next-turn').textContent = started ? 'Siguiente turno ▶' : '▶';
+    $('prev-turn').textContent = started ? '◀ Anterior' : '◀';
+    $('next-turn').disabled = !started;
+    const ai = s.findIndex(x => x.id === c.activeId);
+    $('prev-turn').disabled = !started || (c.round <= 1 && ai <= 0);
+    $('reset-combat').disabled = !started;
+    $('undo').disabled = c.undo.length === 0;
+    if (ui.sheetId) updateSheet();
+  }
+
+  function flashRow(id, kind) {
+    const row = document.querySelector('[data-testid="combatant-row"][data-id="' + id + '"]');
+    if (!row) return;
+    row.classList.remove('flash-dmg', 'flash-heal');
+    void row.offsetWidth; // reinicia la animación
+    row.classList.add(kind === 'heal' ? 'flash-heal' : 'flash-dmg');
+    row.addEventListener('animationend', () => row.classList.remove('flash-dmg', 'flash-heal'), { once: true });
+  }
+  // Tras cambiar de turno, dejamos la fila activa a la vista (por encima de la barra fija).
+  function revealActive() {
+    const row = document.querySelector('[data-testid="combatant-row"][data-active="true"]');
+    if (!row) return;
+    const r = row.getBoundingClientRect();
+    const top = $('screen-combat').querySelector('.topbar').getBoundingClientRect().bottom + 8;
+    const bottom = window.innerHeight - $('combat-bar').offsetHeight - 8;
+    if (r.top < top) window.scrollBy(0, r.top - top);
+    else if (r.bottom > bottom) window.scrollBy(0, r.bottom - bottom);
+  }
+
+  $('back-to-list').addEventListener('click', backToList);
+  $('start-combat').addEventListener('click', () => { commit(startCombat); revealActive(); });
+  $('next-turn').addEventListener('click', () => { commit(nextTurn); revealActive(); });
+  $('prev-turn').addEventListener('click', () => { commit(prevTurn); revealActive(); });
+  $('undo').addEventListener('click', () => {
+    const c = currentCombat(); if (!c || !c.undo.length) return;
+    popUndo(c); c.updatedAt = Date.now(); save(); renderCombat(); toast('Último cambio deshecho');
+  });
+  $('reset-combat').addEventListener('click', () => {
+    const c = currentCombat(); if (!c || c.round === 0) return;
+    confirmDialog({ title: '¿Reiniciar el combate?', message: 'Vuelve a «Preparado» (ronda 0, sin turno activo). La vida y las condiciones se mantienen.', yes: 'Reiniciar', danger: false }, () => {
+      commit(cc => { cc.round = 0; cc.activeId = null; });
+    });
+  });
+  $('add-combatant').addEventListener('click', openCombatantForm);
+
+  // ============================================================ formulario de combatiente
+  function openCombatantForm() {
+    const f = $('combatant-form');
+    f.reset();
+    $('c-kind').value = 'enemy'; $('c-count').value = '1';
+    $('c-error').textContent = '';
+    const qp = $('quick-players'); clear(qp);
+    $('quick-players-wrap').hidden = state.players.length === 0;
+    state.players.forEach(p => {
+      qp.appendChild(el('button', { type: 'button', class: 'chip-btn', 'data-testid': 'quick-player', 'data-name': p.name, text: p.name,
+        onclick: () => {
+          $('c-name').value = p.name; $('c-kind').value = 'player';
+          $('c-hpmax').value = p.hpMax == null ? '' : String(p.hpMax);
+          $('c-ac').value = p.ac == null ? '' : String(p.ac);
+          $('c-count').value = '1';
+          $('c-init').value = ''; $('c-init').focus();
+        } }));
+    });
+    showOverlay('combatant-form');
+    $('c-name').focus();
+  }
+  $('c-cancel').addEventListener('click', closeOverlays);
+  $('combatant-form').addEventListener('submit', e => {
+    e.preventDefault();
+    const name = $('c-name').value.trim();
+    if (!name) { $('c-error').textContent = 'Escribe un nombre.'; $('c-name').focus(); return; }
+    const kind = KINDS.includes($('c-kind').value) ? $('c-kind').value : 'enemy';
+    const init = toInt($('c-init').value); const hpMax = posInt($('c-hpmax').value); const ac = toInt($('c-ac').value);
+    const count = Math.min(posInt($('c-count').value) || 1, 50);
+    let made = [];
+    commit(c => { made = addCombatants(c, { name, kind, init: init === undefined ? null : init, hpMax, ac: ac === undefined ? null : ac, count }); });
+    closeOverlays();
+    if (made.length === 1) toast('Añadido «' + made[0].name + '»');
+    else if (made.length > 1) toast('Añadidos ' + made.length + ' combatientes');
+  });
+
+  // ============================================================ hoja de acciones
+  function sheetCombatant() { const c = currentCombat(); return c && ui.sheetId ? findC(c, ui.sheetId) : null; }
+  function setMore(open) {
+    ui.more = open;
+    $('sheet-more-panel').hidden = !open;
+    $('sheet-more').setAttribute('aria-expanded', open ? 'true' : 'false');
+    $('sheet-more').textContent = open ? 'Menos opciones ▴' : 'Más opciones ▾';
+  }
+  function fillSheetInputs(x) {
+    $('amount-input').value = '';
+    $('set-hp-input').value = '';
+    $('set-hpmax-input').value = x.hpMax == null ? '' : String(x.hpMax);
+    $('set-temp-input').value = x.tempHp > 0 ? String(x.tempHp) : '';
+    $('set-init-input').value = x.initiative == null ? '' : String(x.initiative);
+    $('set-ac-input').value = x.ac == null ? '' : String(x.ac);
+    $('rename-input').value = x.name;
+    $('notes-input').value = x.notes;
+  }
+  function openSheet(id) {
+    const c = currentCombat(); const x = c && findC(c, id); if (!x) return;
+    ui.sheetId = id;
+    setMore(false);
+    fillSheetInputs(x);
+    updateSheet();
+    showOverlay('action-sheet');
+    $('amount-input').focus();
+  }
+  // Refresca lo que muestra la hoja sin tocar lo que el usuario esté escribiendo.
+  function updateSheet() {
+    const c = currentCombat(); const x = sheetCombatant();
+    if (!c || !x) { if (!$('action-sheet').hidden) closeOverlays(); return; }
+    const sh = $('action-sheet');
+    sh.setAttribute('data-id', x.id);
+    sh.className = 'sheet kind-' + x.kind;
+    $('sheet-name').textContent = x.name;
+    $('sheet-kind').textContent = KIND_LABEL[x.kind];
+    const hasHp = x.hpMax != null;
+    const down = hasHp && x.hp <= 0;
+    const hpText = $('sheet-hp-text');
+    hpText.textContent = hasHp ? x.hp + '/' + x.hpMax : 'Sin vida';
+    hpText.classList.toggle('nohp', !hasHp);
+    $('sheet-temp').hidden = !(x.tempHp > 0); $('sheet-temp').textContent = '+' + x.tempHp + ' temp';
+    $('sheet-down').hidden = !down;
+    $('sheet-meta').textContent = 'Inic. ' + (x.initiative == null ? '—' : x.initiative) + ' · CA ' + (x.ac == null ? '—' : x.ac);
+    $('sheet-hpbar-wrap').hidden = !hasHp;
+    const pct = hpPct(x);
+    $('sheet-hpbar').className = hpBarClass(pct); $('sheet-hpbar').style.width = pct + '%';
+    $('sheet-nohp').hidden = hasHp;
+    $('apply-damage').disabled = !hasHp; $('apply-heal').disabled = !hasHp;
+    $('set-hp-input').placeholder = hasHp ? 'Actual: ' + x.hp : 'Vida máx.';
+    $$('#cond-grid .cond').forEach(b => b.setAttribute('aria-pressed', x.conditions.includes(b.getAttribute('data-condition')) ? 'true' : 'false'));
+    const s = sorted(c); const i = s.findIndex(y => y.id === x.id);
+    $('move-up').disabled = i <= 0; $('move-down').disabled = i >= s.length - 1;
+    // Campos de "Más opciones": se sincronizan solo si el usuario no está escribiendo en ellos.
+    const sync = (id, v) => { const inp = $(id); if (document.activeElement !== inp) inp.value = v; };
+    sync('set-hpmax-input', x.hpMax == null ? '' : String(x.hpMax));
+    sync('set-temp-input', x.tempHp > 0 ? String(x.tempHp) : '');
+    sync('set-init-input', x.initiative == null ? '' : String(x.initiative));
+    sync('set-ac-input', x.ac == null ? '' : String(x.ac));
+    sync('rename-input', x.name);
+    sync('notes-input', x.notes);
+  }
+  // Mutación sobre el combatiente de la hoja.
+  function sheetCommit(fn, opts) {
+    const x = sheetCombatant(); if (!x) return false;
+    return commit(c => { const y = findC(c, x.id); if (!y) return false; return fn(y, c); }, opts);
+  }
+
+  $('close-sheet').addEventListener('click', closeOverlays);
+  $('sheet-more').addEventListener('click', () => {
+    setMore(!ui.more);
+    if (ui.more) requestAnimationFrame(() => { $('sheet-more').scrollIntoView({ block: 'start', behavior: 'smooth' }); });
+  });
+
+  // Chips de cantidad rápida: rellenan el campo (no aplican nada por sí solos).
+  QUICK_AMOUNTS.forEach(n => {
+    $('quick-amounts').appendChild(el('button', { type: 'button', text: String(n), 'aria-label': 'Cantidad ' + n,
+      onmousedown: e => e.preventDefault(), // no roba el foco al campo (el teclado sigue abierto)
+      onclick: () => { const a = $('amount-input'); a.value = String(n); } }));
+  });
+  ['apply-damage', 'apply-heal'].forEach(id => $(id).addEventListener('mousedown', e => e.preventDefault()));
+
+  function applyAmount(sign) {
+    const n = posInt($('amount-input').value);
+    const x = sheetCombatant();
+    if (!x || n == null || x.hpMax == null) return; // cantidad inválida o sin vida: no hace nada
+    const ok = sheetCommit(y => (sign < 0 ? damage(y, n) : heal(y, n)));
+    if (ok === false) return;
+    $('amount-input').value = '';
+    flashRow(x.id, sign < 0 ? 'dmg' : 'heal');
+  }
+  $('amount-form').addEventListener('submit', e => { e.preventDefault(); applyAmount(-1); });
+  $('apply-heal').addEventListener('click', () => applyAmount(1));
+
+  $('set-hp-form').addEventListener('submit', e => {
+    e.preventDefault();
+    const v = toInt($('set-hp-input').value);
+    if (v == null || v < 0) return;
+    const x = sheetCombatant(); if (!x) return;
+    if (sheetCommit(y => setHp(y, v)) === false) return; // no se pudo fijar: dejamos lo escrito
+    $('set-hp-input').value = '';
+    flashRow(x.id, 'heal');
+  });
+  $('set-hpmax-form').addEventListener('submit', e => {
+    e.preventDefault();
+    const v = toInt($('set-hpmax-input').value);
+    if (v === undefined) return;
+    if (v == null) {
+      const x = sheetCombatant(); if (!x || x.hpMax == null) return;
+      confirmDialog({ title: '¿Dejar de gestionar la vida?', message: 'Se borrará la vida actual y máxima de ' + x.name + '.', yes: 'Quitar vida' }, () => sheetCommit(y => setHpMax(y, null)));
+      return;
+    }
+    sheetCommit(y => setHpMax(y, v));
+  });
+  $('set-temp-form').addEventListener('submit', e => {
+    e.preventDefault();
+    const v = toInt($('set-temp-input').value);
+    if (v === undefined || (v != null && v < 0)) return;
+    sheetCommit(y => { y.tempHp = v == null ? 0 : v; });
+  });
+  $('set-init-form').addEventListener('submit', e => {
+    e.preventDefault();
+    const v = toInt($('set-init-input').value);
+    if (v === undefined) return;
+    sheetCommit(y => { y.initiative = v; });
+  });
+  $('set-ac-form').addEventListener('submit', e => {
+    e.preventDefault();
+    const v = toInt($('set-ac-input').value);
+    if (v === undefined) return;
+    sheetCommit(y => { y.ac = v; });
+  });
+  $('rename-form').addEventListener('submit', e => {
+    e.preventDefault();
+    const name = $('rename-input').value.trim();
+    if (!name) return;
+    sheetCommit(y => { if (y.name === name) return false; y.name = name; });
+  });
+  // Notas: se guardan al escribir; el snapshot de deshacer se toma al terminar la edición (change).
+  $('notes-input').addEventListener('focus', () => { const x = sheetCombatant(); ui.notesBefore = x ? x.notes : ''; });
+  $('notes-input').addEventListener('input', () => {
+    const c = currentCombat(); const x = sheetCombatant(); if (!c || !x) return;
+    x.notes = $('notes-input').value; c.updatedAt = Date.now(); save();
+    renderCombat(); // la marca de notas de la fila no puede quedarse obsoleta
+  });
+  $('notes-input').addEventListener('change', () => {
+    const c = currentCombat(); const x = sheetCombatant(); if (!c || !x) return;
+    const now = $('notes-input').value;
+    if (now === ui.notesBefore) return;
+    x.notes = ui.notesBefore; pushUndo(c); x.notes = now; ui.notesBefore = now;
+    trimUndo(c); c.updatedAt = Date.now(); save(); renderCombat();
+  });
+
+  CONDITIONS.forEach(cn => {
+    $('cond-grid').appendChild(el('button', { type: 'button', class: 'cond', 'data-testid': 'condition-toggle', 'data-condition': cn, 'aria-pressed': 'false', text: cn,
+      onclick: () => sheetCommit(y => { const i = y.conditions.indexOf(cn); if (i >= 0) y.conditions.splice(i, 1); else y.conditions.push(cn); }) }));
+  });
+
+  $('move-up').addEventListener('click', () => sheetCommit((y, c) => moveCombatant(c, y.id, -1)));
+  $('move-down').addEventListener('click', () => sheetCommit((y, c) => moveCombatant(c, y.id, 1)));
+  $('duplicate-combatant').addEventListener('click', () => {
+    let copy = null;
+    sheetCommit((y, c) => { copy = duplicateCombatant(c, y.id); return copy ? undefined : false; });
+    if (copy) toast('Duplicado como «' + copy.name + '»');
+  });
+  $('remove-combatant').addEventListener('click', () => {
+    const x = sheetCombatant(); if (!x) return;
+    confirmDialog({ title: '¿Eliminar a «' + x.name + '»?', message: 'Se quita del combate. Puedes recuperarlo con Deshacer.', yes: 'Eliminar' }, () => {
+      const ok = commit(c => removeCombatant(c, x.id));
+      closeOverlays();
+      if (ok) toast('Eliminado «' + x.name + '»');
+    });
+  });
+
+  // ============================================================ pantalla: ajustes
+  function renderSettings() {
+    const list = $('player-list'); clear(list);
+    $('players-empty').hidden = state.players.length > 0;
+    state.players.forEach(p => {
+      const sub = [p.hpMax != null ? 'Vida máx. ' + p.hpMax : null, p.ac != null ? 'CA ' + p.ac : null].filter(Boolean).join(' · ') || 'Sin vida ni CA';
+      list.appendChild(el('div', { class: 'player-item', 'data-testid': 'player-item', 'data-name': p.name, 'data-id': p.id },
+        el('div', { class: 'player-main' }, el('div', { class: 'player-name', text: p.name }), el('div', { class: 'player-sub', text: sub })),
+        el('button', { type: 'button', class: 'btn btn-sm', text: 'Editar', 'aria-label': 'Editar ' + p.name, onclick: () => editPlayer(p.id) }),
+        el('button', { type: 'button', class: 'btn btn-sm btn-danger', 'data-testid': 'player-delete', text: 'Borrar', 'aria-label': 'Borrar ' + p.name,
+          onclick: () => confirmDialog({ title: '¿Borrar a «' + p.name + '» de los jugadores habituales?', message: 'No afecta a los combates ya creados.', yes: 'Borrar' }, () => {
+            state.players = state.players.filter(x => x.id !== p.id);
+            if (ui.editingPlayerId === p.id) resetPlayerForm();
+            save(); renderSettings();
+          }) })));
+    });
+    const canCopy = !!(navigator.clipboard && navigator.clipboard.writeText);
+    $('copy-export').hidden = !canCopy; // sin API de portapapeles el boton no tiene sentido (SPEC 2.3)
+    $('copy-export').disabled = !$('export-output').value;
+  }
+  function resetPlayerForm() {
+    ui.editingPlayerId = null;
+    $('player-form').reset();
+    $('player-error').textContent = '';
+    $('player-add').textContent = 'Añadir jugador';
+    $('player-cancel-edit').hidden = true;
+  }
+  function editPlayer(id) {
+    const p = state.players.find(x => x.id === id); if (!p) return;
+    ui.editingPlayerId = id;
+    $('player-name').value = p.name;
+    $('player-hpmax').value = p.hpMax == null ? '' : String(p.hpMax);
+    $('player-ac').value = p.ac == null ? '' : String(p.ac);
+    $('player-add').textContent = 'Guardar cambios';
+    $('player-cancel-edit').hidden = false;
+    $('player-name').focus();
+  }
+  $('player-cancel-edit').addEventListener('click', resetPlayerForm);
+  $('player-form').addEventListener('submit', e => {
+    e.preventDefault();
+    const name = $('player-name').value.trim();
+    if (!name) { $('player-error').textContent = 'Escribe un nombre.'; $('player-name').focus(); return; }
+    const hpMax = posInt($('player-hpmax').value); const ac = toInt($('player-ac').value);
+    const data = { name, hpMax, ac: ac === undefined ? null : ac };
+    if (ui.editingPlayerId) {
+      const p = state.players.find(x => x.id === ui.editingPlayerId);
+      if (p) Object.assign(p, data);
+    } else {
+      state.players.push(Object.assign({ id: uid() }, data));
+    }
+    save(); resetPlayerForm(); renderSettings();
+    $('player-name').focus();
+  });
+
+  $('open-settings').addEventListener('click', () => {
+    resetPlayerForm();
+    $('export-output').value = '';
+    $('import-error').textContent = ''; $('import-ok').hidden = true;
+    showScreen('settings');
+  });
+  $('settings-back').addEventListener('click', () => showScreen('list'));
+
+  $('export-json').addEventListener('click', () => {
+    const out = $('export-output');
+    out.value = JSON.stringify(serializable(state), null, 2);
+    renderSettings();
+    out.focus(); out.select();
+  });
+  $('copy-export').addEventListener('click', () => {
+    const txt = $('export-output').value;
+    if (!txt || !navigator.clipboard) return;
+    navigator.clipboard.writeText(txt).then(() => toast('JSON copiado'), () => toast('No se pudo copiar; selecciona el texto y cópialo'));
+  });
+
+  function parseImport(text) {
+    let obj;
+    try { obj = JSON.parse(text); } catch (e) { throw new Error('El texto no es JSON válido.'); }
+    if (!obj || typeof obj !== 'object' || Array.isArray(obj)) throw new Error('El JSON debe ser un objeto con la lista "combats".');
+    if (!Array.isArray(obj.combats)) throw new Error('Falta la lista "combats" (debe ser un array).');
+    return normState(obj);
+  }
+  $('import-apply').addEventListener('click', () => {
+    $('import-ok').hidden = true;
+    const text = $('import-input').value.trim();
+    if (!text) { $('import-error').textContent = 'Pega primero el JSON exportado.'; return; }
+    let next;
+    try { next = parseImport(text); } catch (e) { $('import-error').textContent = e.message; return; }
+    $('import-error').textContent = '';
+    const apply = () => {
+      state = next; state.openCombatId = null;
+      save(); closeOverlays(); resetPlayerForm();
+      $('import-input').value = '';
+      $('import-ok').textContent = 'Importados ' + plural(state.combats.length, 'combate', 'combates') + ' y ' + plural(state.players.length, 'jugador', 'jugadores') + '.';
+      $('import-ok').hidden = false;
+      renderSettings(); toast('Importación correcta: ' + plural(state.combats.length, 'combate', 'combates'));
+    };
+    if (state.combats.length || state.players.length) {
+      confirmDialog({ title: '¿Sustituir todos los datos?', message: 'Se reemplazarán ' + plural(state.combats.length, 'combate', 'combates') + ' y ' + plural(state.players.length, 'jugador', 'jugadores') + ' por los del JSON.', yes: 'Importar' }, apply);
+    } else apply();
+  });
+  $('wipe-all').addEventListener('click', () => {
+    confirmDialog({ title: '¿Borrar todos los datos?', message: 'Se eliminan todos los combates y jugadores habituales de este dispositivo. No se puede deshacer.', yes: 'Borrar todo' }, () => {
+      state = emptyState();
+      try { localStorage.removeItem(KEY); } catch (e) { /* nada */ }
+      resetPlayerForm(); closeOverlays();
+      showScreen('list');
+    });
+  });
+
+  // ============================================================ global
+  $('backdrop').addEventListener('click', closeOverlays);
+  document.addEventListener('keydown', e => {
+    if (e.key !== 'Escape') return;
+    if (!$('confirm-dialog').hidden) { closeConfirm(); return; }
+    if (anyOverlayOpen()) { closeOverlays(); return; }
+    if (!$('new-combat-form').hidden) showNewCombatForm(false);
+  });
+
+  // Arranque: se restaura el combate abierto si existe.
+  showScreen(currentCombat() ? 'combat' : 'list');
+
+  // Service worker solo bajo http/https (en file:// o capacitor:// no aplica); nunca rompe la app.
+  try {
+    if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.protocol === 'http:')) {
+      window.addEventListener('load', () => { navigator.serviceWorker.register('sw.js').catch(() => {}); });
+    }
+  } catch (e) { /* sin service worker */ }
+})();
+</script>
+</body>
+</html>
