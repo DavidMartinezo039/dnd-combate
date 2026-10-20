@@ -600,6 +600,133 @@ await step('ojo: ocultar información deja solo turnos y nombres', async () => {
   await noHorizontalScroll('combate con ojo 360px');
 });
 
+async function beastNames(testid = 'beast-item') { return page.$$eval(t(testid), els => els.map(e => e.getAttribute('data-name'))); }
+async function addBeast({ name, type, cr, hpMax, ac, init, notes }) {
+  await page.click(t('new-beast'));
+  await page.waitForSelector(t('beast-form'), { state: 'visible' });
+  await page.fill(t('b-name'), name);
+  if (type) await page.selectOption(t('b-type'), type);
+  if (cr != null) await page.selectOption(t('b-cr'), String(cr));
+  if (hpMax != null) await page.fill(t('b-hpmax'), String(hpMax));
+  if (ac != null) await page.fill(t('b-ac'), String(ac));
+  if (init != null) await page.fill(t('b-init'), String(init));
+  if (notes) await page.fill(t('b-notes'), notes);
+  await page.click(t('b-save'));
+  await page.locator(t('beast-form')).waitFor({ state: 'hidden' });
+}
+
+await step('bestiario: crear, buscar, filtrar, ordenar, editar y borrar', async () => {
+  await page.click(t('back-to-list'));
+  await page.waitForSelector(t('screen-list'), { state: 'visible' });
+  eq(await text(t('open-bestiary')), '📖 Bestiario · 0 enemigos', 'botón bestiario');
+  await page.click(t('open-bestiary'));
+  await page.waitForSelector(t('screen-bestiary'), { state: 'visible' });
+  await addBeast({ name: 'Goblin', type: 'Humanoide', cr: 0.25, hpMax: 7, ac: 15, init: 2, notes: 'Cimitarra +4, 1d6+2' });
+  await addBeast({ name: 'Ogro', type: 'Gigante', cr: 2, hpMax: 59, ac: 11, init: -1 });
+  await addBeast({ name: 'Zombi', type: 'No muerto', cr: 0.25, hpMax: 22, ac: 8, notes: 'Fortaleza de no muerto' });
+  deepEq(await beastNames(), ['Goblin', 'Ogro', 'Zombi'], 'orden por nombre');
+  // Nombre repetido (sin distinguir mayúsculas) -> error in-page.
+  await page.click(t('new-beast'));
+  await page.fill(t('b-name'), 'ogro');
+  await page.click(t('b-save'));
+  if (!(await page.textContent('#b-error')).includes('Ogro')) throw new Error('no avisa del nombre repetido');
+  await page.click(t('b-cancel'));
+  // Búsqueda sin acentos ni mayúsculas, también en tipo y notas.
+  await page.fill(t('bestiary-search'), 'ZOMBI');
+  deepEq(await beastNames(), ['Zombi'], 'buscar por nombre');
+  await page.fill(t('bestiary-search'), 'cimitarra');
+  deepEq(await beastNames(), ['Goblin'], 'buscar en notas');
+  await page.fill(t('bestiary-search'), 'gigante');
+  deepEq(await beastNames(), ['Ogro'], 'buscar por tipo');
+  eq(await text(t('bestiary-count')), '1 de 3', 'contador filtrado');
+  await page.click(t('bestiary-reset'));
+  deepEq(await beastNames(), ['Goblin', 'Ogro', 'Zombi'], 'quitar filtros');
+  await page.selectOption(t('bestiary-type'), 'No muerto');
+  deepEq(await beastNames(), ['Zombi'], 'filtro tipo');
+  await page.selectOption(t('bestiary-type'), '');
+  await page.selectOption(t('bestiary-crmin'), '0.5');
+  deepEq(await beastNames(), ['Ogro'], 'VD mínimo');
+  await page.selectOption(t('bestiary-crmin'), '');
+  await page.selectOption(t('bestiary-crmax'), '1');
+  deepEq(await beastNames(), ['Goblin', 'Zombi'], 'VD máximo');
+  await page.selectOption(t('bestiary-crmax'), '');
+  await page.selectOption(t('bestiary-sort'), 'cr-desc');
+  eq((await beastNames())[0], 'Ogro', 'orden VD descendente');
+  await page.selectOption(t('bestiary-sort'), 'hp-desc');
+  deepEq(await beastNames(), ['Ogro', 'Zombi', 'Goblin'], 'orden por vida');
+  await page.selectOption(t('bestiary-sort'), 'ac-desc');
+  deepEq(await beastNames(), ['Goblin', 'Ogro', 'Zombi'], 'orden por CA');
+  await page.selectOption(t('bestiary-sort'), 'name');
+  await noHorizontalScroll('bestiario 360px');
+  await shot('10-bestiario');
+  // Editar
+  await page.click(`${t('beast-item')}[data-name="Ogro"] ${t('beast-edit')}`);
+  eq(await page.inputValue(t('b-hpmax')), '59', 'form de edición relleno');
+  eq(await page.inputValue(t('b-cr')), '2', 'VD en edición');
+  await page.fill(t('b-hpmax'), '60');
+  await page.click(t('b-save'));
+  await page.locator(t('beast-form')).waitFor({ state: 'hidden' });
+  if (!(await text(`${t('beast-item')}[data-name="Ogro"]`)).includes('60')) throw new Error('no se guardó la edición');
+  // Borrar
+  await page.click(`${t('beast-item')}[data-name="Zombi"] ${t('beast-delete')}`);
+  await confirmYes();
+  deepEq(await beastNames(), ['Goblin', 'Ogro'], 'tras borrar');
+  // Persistencia
+  await page.reload({ waitUntil: 'load' });
+  await page.waitForSelector(t('screen-list'), { state: 'visible' });
+  eq(await text(t('open-bestiary')), '📖 Bestiario · 2 enemigos', 'bestiario persiste');
+});
+
+await step('añadir combatiente: elegir del bestiario, tirar iniciativa y guardar uno nuevo', async () => {
+  await page.click(t('combat-item'));
+  await page.waitForSelector(t('screen-combat'), { state: 'visible' });
+  await page.click(t('add-combatant'));
+  await page.waitForSelector(t('combatant-form'), { state: 'visible' });
+  await page.fill(t('c-count'), '2'); // lo escrito antes de abrir el selector no se pierde
+  await page.click(t('c-from-bestiary'));
+  await page.waitForSelector(t('bestiary-picker'), { state: 'visible' });
+  deepEq(await beastNames('pick-item'), ['Goblin', 'Ogro'], 'selector lista el bestiario');
+  await page.fill(t('picker-search'), 'gob');
+  deepEq(await beastNames('pick-item'), ['Goblin'], 'buscar en el selector');
+  await noHorizontalScroll('selector 360px');
+  await shot('11-selector');
+  await page.click(`${t('pick-item')}[data-name="Goblin"]`);
+  await page.waitForSelector(t('combatant-form'), { state: 'visible' });
+  eq(await page.inputValue(t('c-name')), 'Goblin', 'nombre rellenado');
+  eq(await page.inputValue(t('c-hpmax')), '7', 'vida rellenada');
+  eq(await page.inputValue(t('c-ac')), '15', 'CA rellenada');
+  eq(await page.inputValue(t('c-count')), '2', 'cantidad conservada');
+  if (await visible(t('c-save-beast'))) throw new Error('la casilla de guardar no debe verse si viene del bestiario');
+  eq(await text(t('c-roll-init')), '🎲 Tirar iniciativa (d20+2)', 'botón de iniciativa con bonificador');
+  await page.click(t('c-roll-init'));
+  await shot('12-form-desde-bestiario');
+  const ini = Number(await page.inputValue(t('c-init')));
+  if (!(ini >= 3 && ini <= 22)) throw new Error('iniciativa fuera de rango: ' + ini);
+  await page.click(t('c-save'));
+  await page.locator(t('combatant-form')).waitFor({ state: 'hidden' });
+  const ns = await names();
+  if (!ns.includes('Goblin 3') || !ns.includes('Goblin 4')) throw new Error('no se añadieron Goblin 3 y 4: ' + ns.join(', '));
+  if (!(await visible(`${row('Goblin 3')} .row-note`))) throw new Error('las notas del bestiario no se copiaron');
+  eq(await text(`${row('Goblin 4')} ${t('row-init')}`), String(ini), 'iniciativa tirada aplicada');
+  // Uno de un solo uso, sin guardar, y otro guardándolo.
+  await addCombatant({ name: 'Rata', hpMax: 1 });
+  await page.click(t('add-combatant'));
+  await page.waitForSelector(t('combatant-form'), { state: 'visible' });
+  if (await visible(t('c-picked'))) throw new Error('el formulario debe abrirse sin enemigo elegido');
+  await page.fill(t('c-name'), 'Lobo');
+  await page.fill(t('c-hpmax'), '11');
+  await page.fill(t('c-ac'), '13');
+  await page.check(t('c-save-beast'));
+  await page.click(t('c-save'));
+  await page.locator(t('combatant-form')).waitFor({ state: 'hidden' });
+  await page.click(t('back-to-list'));
+  await page.click(t('open-bestiary'));
+  await page.waitForSelector(t('screen-bestiary'), { state: 'visible' });
+  deepEq(await beastNames(), ['Goblin', 'Lobo', 'Ogro'], 'Lobo guardado, Rata no');
+  await page.click(t('bestiary-back'));
+  await page.waitForSelector(t('screen-list'), { state: 'visible' });
+});
+
 await step('sin errores de consola ni diálogos nativos', async () => {
   if (pageErrors.length) throw new Error('pageerror: ' + pageErrors.slice(0, 3).join(' || '));
   if (consoleErrors.length) throw new Error('console.error: ' + consoleErrors.slice(0, 3).join(' || '));

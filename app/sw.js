@@ -1,7 +1,7 @@
 // Service worker de dnd-combate: cachea la app entera en la instalación para que
 // funcione sin conexión. Estrategia: caché primero, red como respaldo; al cambiar
 // CACHE_VERSION se descarta la caché antigua y se vuelve a descargar todo.
-const CACHE_VERSION = 'dnd-combate-v2';
+const CACHE_VERSION = 'dnd-combate-v3';
 const ASSETS = [
   './',
   './index.html',

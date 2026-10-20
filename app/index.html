@@ -357,6 +357,30 @@ body[data-screen="combat"] .dice-fab { bottom: calc(146px + var(--safe-b)); }
 .dice-pick:active { background: var(--line); }
 .dice-pick.reroll { color: var(--accent); font-size: 14px; }
 .dice-pick:disabled { color: #59606e; background: #16181f; border-color: #232834; }
+/* ---------- bestiario ---------- */
+.beast-item {
+  display: flex; align-items: center; gap: 8px; background: var(--surface); border: 1px solid var(--line);
+  border-left: 5px solid var(--enemy); border-radius: var(--radius); padding: 10px 8px 10px 12px; min-height: 64px;
+}
+.beast-item.pick { cursor: pointer; }
+.beast-item.pick:active { background: var(--surface-2); }
+.beast-main { flex: 1; display: flex; flex-direction: column; gap: 5px; }
+.beast-name { font-size: 17px; font-weight: 700; overflow-wrap: anywhere; }
+.beast-tags { display: flex; flex-wrap: wrap; gap: 4px; }
+.tag { font-size: 12.5px; font-weight: 700; padding: 2px 7px; border-radius: 6px; background: var(--surface-2); border: 1px solid var(--line); color: var(--muted); white-space: nowrap; }
+.tag.cr { color: var(--accent); }
+.beast-notes { font-size: 13.5px; color: var(--dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.beast-actions { display: flex; flex-direction: column; gap: 6px; flex: 0 0 auto; }
+.filters { display: flex; flex-direction: column; gap: 8px; }
+.filters input, .filters select { min-height: 44px; font-size: 16px; }
+.result-line { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 44px; font-size: 14px; color: var(--muted); font-weight: 600; }
+.check-line { display: flex; align-items: center; gap: 10px; min-height: 44px; font-size: 15px; font-weight: 600; cursor: pointer; }
+.check-line input { width: 22px; height: 22px; min-height: 0; padding: 0; flex: none; accent-color: var(--accent); }
+.roll-line { display: flex; align-items: center; gap: 10px; }
+.roll-line .btn { flex: 0 0 auto; }
+.roll-result { font-size: 14px; color: var(--muted); font-weight: 600; font-variant-numeric: tabular-nums; }
+.picked-from { font-size: 14px; font-weight: 700; color: var(--accent); }
+
 @media (prefers-reduced-motion: reduce) {
   .die.rolling .die-face, .die.landed .die-face, .dice-total.bump { animation: none; }
 }
@@ -382,6 +406,7 @@ body[data-screen="combat"] .dice-fab { bottom: calc(146px + var(--safe-b)); }
         <button type="submit" class="btn btn-primary" id="combat-create" data-testid="combat-create">Crear</button>
       </div>
     </form>
+    <button type="button" class="btn full" id="open-bestiary" data-testid="open-bestiary">📖 Bestiario · <span id="bestiary-count"></span></button>
     <div class="stack" id="combat-list"></div>
     <p class="empty" id="list-empty" hidden>No hay combates todavía.<br>Crea uno y añade jugadores y enemigos.</p>
   </div>
@@ -414,6 +439,45 @@ body[data-screen="combat"] .dice-fab { bottom: calc(146px + var(--safe-b)); }
       <button type="button" class="btn" id="add-combatant" data-testid="add-combatant">+ Añadir</button>
     </div>
   </div></div>
+</section>
+
+<!-- ======================= BESTIARIO ======================= -->
+<section class="screen" id="screen-bestiary" data-testid="screen-bestiary" hidden>
+  <header class="topbar"><div class="topbar-inner">
+    <button type="button" class="icon-btn" id="bestiary-back" data-testid="bestiary-back" aria-label="Volver">←</button>
+    <h1 class="topbar-title">Bestiario</h1>
+  </div></header>
+  <div class="content stack">
+    <button type="button" class="btn btn-primary btn-xl full" id="new-beast" data-testid="new-beast">+ Nuevo enemigo</button>
+    <form class="card stack-sm" id="beast-form" data-testid="beast-form" novalidate hidden>
+      <h2 id="beast-form-title">Nuevo enemigo</h2>
+      <div class="field">
+        <label class="lbl" for="b-name">Nombre</label>
+        <input id="b-name" data-testid="b-name" placeholder="Goblin" maxlength="60" autocomplete="off" enterkeyhint="next">
+      </div>
+      <div class="grid-2">
+        <div class="field"><label class="lbl" for="b-type">Tipo</label><select id="b-type" data-testid="b-type"></select></div>
+        <div class="field"><label class="lbl" for="b-cr">Desafío (VD)</label><select id="b-cr" data-testid="b-cr"></select></div>
+      </div>
+      <div class="grid-3">
+        <div class="field"><label class="lbl" for="b-hpmax">Vida máx.</label><input id="b-hpmax" data-testid="b-hpmax" inputmode="numeric" autocomplete="off"></div>
+        <div class="field"><label class="lbl" for="b-ac">CA</label><input id="b-ac" data-testid="b-ac" inputmode="numeric" autocomplete="off"></div>
+        <div class="field"><label class="lbl" for="b-init">Bonif. ini.</label><input id="b-init" data-testid="b-init" inputmode="numeric" placeholder="+0" autocomplete="off"></div>
+      </div>
+      <div class="field">
+        <label class="lbl" for="b-notes">Notas (ataques, rasgos…)</label>
+        <textarea id="b-notes" data-testid="b-notes" rows="3" placeholder="Cimitarra +4, 1d6+2 cortante"></textarea>
+      </div>
+      <p class="form-error" id="b-error"></p>
+      <div class="btn-row">
+        <button type="button" class="btn" id="b-cancel" data-testid="b-cancel">Cancelar</button>
+        <button type="submit" class="btn btn-primary" id="b-save" data-testid="b-save">Guardar</button>
+      </div>
+    </form>
+    <div id="bestiary-filters"></div>
+    <div class="stack-sm" id="bestiary-list"></div>
+    <p class="empty" id="bestiary-empty" hidden></p>
+  </div>
 </section>
 
 <!-- ======================= AJUSTES ======================= -->
@@ -556,6 +620,8 @@ body[data-screen="combat"] .dice-fab { bottom: calc(146px + var(--safe-b)); }
     <span class="lbl">Jugadores habituales</span>
     <div class="quick-players" id="quick-players"></div>
   </div>
+  <button type="button" class="btn full" id="c-from-bestiary" data-testid="c-from-bestiary">📖 Elegir del bestiario</button>
+  <p class="picked-from" id="c-picked" data-testid="c-picked" hidden></p>
   <div class="field">
     <label class="lbl" for="c-name">Nombre</label>
     <input id="c-name" data-testid="c-name" placeholder="Goblin" maxlength="60" autocomplete="off" enterkeyhint="next">
@@ -573,13 +639,30 @@ body[data-screen="combat"] .dice-fab { bottom: calc(146px + var(--safe-b)); }
     <div class="field"><label class="lbl" for="c-hpmax">Vida máx.</label><input id="c-hpmax" data-testid="c-hpmax" inputmode="numeric" autocomplete="off" enterkeyhint="next"></div>
     <div class="field"><label class="lbl" for="c-ac">CA</label><input id="c-ac" data-testid="c-ac" inputmode="numeric" autocomplete="off" enterkeyhint="next"></div>
   </div>
+  <div class="roll-line">
+    <button type="button" class="btn btn-sm" id="c-roll-init" data-testid="c-roll-init">🎲 Tirar iniciativa</button>
+    <span class="roll-result" id="c-roll-result" data-testid="c-roll-result"></span>
+  </div>
   <div class="field">
     <label class="lbl" for="c-count">Cantidad (si es más de 1 se numeran: Goblin 1, Goblin 2…)</label>
     <input id="c-count" data-testid="c-count" inputmode="numeric" value="1" autocomplete="off" enterkeyhint="done">
   </div>
+  <label class="check-line" id="c-save-beast-wrap"><input type="checkbox" id="c-save-beast" data-testid="c-save-beast"> Guardar también en el bestiario</label>
   <p class="form-error" id="c-error"></p>
   <button type="submit" class="btn btn-xl btn-primary full" id="c-save" data-testid="c-save">Guardar</button>
 </form>
+
+<!-- Selector del bestiario (desde "Añadir combatiente") -->
+<div class="sheet" id="bestiary-picker" data-testid="bestiary-picker" role="dialog" aria-modal="true" aria-labelledby="picker-title" hidden>
+  <div class="sheet-grip" aria-hidden="true"></div>
+  <div class="sheet-head">
+    <h2 class="sheet-title" id="picker-title" style="flex:1;padding-top:8px">Elegir del bestiario</h2>
+    <button type="button" class="icon-btn" id="picker-close" data-testid="picker-close" aria-label="Volver al formulario">✕</button>
+  </div>
+  <div id="picker-filters"></div>
+  <div class="stack-sm" id="picker-list"></div>
+  <p class="empty" id="picker-empty" hidden></p>
+</div>
 
 <!-- Menú de un combate (lista) -->
 <div class="sheet" id="combat-menu-sheet" role="dialog" aria-modal="true" aria-labelledby="combat-menu-title" hidden>
@@ -653,6 +736,12 @@ body[data-screen="combat"] .dice-fab { bottom: calc(146px + var(--safe-b)); }
   const KINDS = ['player', 'enemy', 'ally'];
   const KIND_LABEL = { player: 'Jugador', enemy: 'Enemigo', ally: 'Aliado' };
   const QUICK_AMOUNTS = [1, 2, 5, 10, 15, 20];
+  const CREATURE_TYPES = ['Aberración', 'Bestia', 'Celestial', 'Cieno', 'Constructo', 'Dragón', 'Elemental', 'Feérico',
+    'Gigante', 'Humanoide', 'Infernal', 'Monstruosidad', 'No muerto', 'Planta'];
+  // Valores de desafío de 5e: 0, 1/8, 1/4, 1/2 y de 1 a 30.
+  const CRS = [0, 0.125, 0.25, 0.5].concat(Array.from({ length: 30 }, (_, i) => i + 1));
+  function crLabel(cr) { return cr === 0.125 ? '1/8' : cr === 0.25 ? '1/4' : cr === 0.5 ? '1/2' : String(cr); }
+  function signed(n) { return (n < 0 ? '−' : '+') + Math.abs(n); }
 
   // ============================================================ utilidades
   const $ = id => document.getElementById(id);
@@ -707,7 +796,7 @@ body[data-screen="combat"] .dice-fab { bottom: calc(146px + var(--safe-b)); }
   function plural(n, s, p) { return n + ' ' + (n === 1 ? s : p); }
 
   // ============================================================ estado
-  function emptyState() { return { version: 1, players: [], combats: [], openCombatId: null }; }
+  function emptyState() { return { version: 1, players: [], bestiary: [], combats: [], openCombatId: null }; }
 
   function normCombatant(x) {
     const hpMax = numOrNull(x.hpMax);
@@ -747,9 +836,20 @@ body[data-screen="combat"] .dice-fab { bottom: calc(146px + var(--safe-b)); }
     const hp = numOrNull(p.hpMax);
     return { id: typeof p.id === 'string' && p.id ? p.id : uid(), name: p.name.trim(), hpMax: hp != null && hp > 0 ? hp : null, ac: numOrNull(p.ac) };
   }
+  function normBeast(b) {
+    const hp = numOrNull(b.hpMax);
+    const cr = typeof b.cr === 'number' && CRS.includes(b.cr) ? b.cr : null;
+    return {
+      id: typeof b.id === 'string' && b.id ? b.id : uid(), name: b.name.trim(),
+      type: CREATURE_TYPES.includes(b.type) ? b.type : null, cr,
+      hpMax: hp != null && hp > 0 ? hp : null, ac: numOrNull(b.ac), initBonus: numOrNull(b.initBonus),
+      notes: typeof b.notes === 'string' ? b.notes : ''
+    };
+  }
   function normState(obj) {
     const s = emptyState();
     s.players = (Array.isArray(obj.players) ? obj.players : []).filter(p => p && typeof p === 'object' && typeof p.name === 'string' && p.name.trim()).map(normPlayer);
+    s.bestiary = (Array.isArray(obj.bestiary) ? obj.bestiary : []).filter(b => b && typeof b === 'object' && typeof b.name === 'string' && b.name.trim()).map(normBeast);
     s.combats = obj.combats.filter(c => c && typeof c === 'object').map(normCombat);
     s.openCombatId = typeof obj.openCombatId === 'string' && s.combats.some(c => c.id === obj.openCombatId) ? obj.openCombatId : null;
     return s;
@@ -771,7 +871,7 @@ body[data-screen="combat"] .dice-fab { bottom: calc(146px + var(--safe-b)); }
     // La pila de deshacer NO se persiste: es una ayuda de sesion. Persistirla haria que, tras
     // recargar, "Deshacer" revirtiese un cambio que el usuario ya daba por cerrado (y el e2e del
     // proyecto lo comprueba: pulsa Deshacer tras recargar y espera el mismo numero de combatientes).
-    return { version: 1, players: s.players, combats: s.combats.map(c => Object.assign({}, c, { undo: [] })), openCombatId: s.openCombatId };
+    return { version: 1, players: s.players, bestiary: s.bestiary, combats: s.combats.map(c => Object.assign({}, c, { undo: [] })), openCombatId: s.openCombatId };
   }
   function save() {
     try { localStorage.setItem(KEY, JSON.stringify(serializable(state))); } catch (e) { /* cuota llena o modo privado: seguimos en memoria */ }
@@ -936,7 +1036,7 @@ body[data-screen="combat"] .dice-fab { bottom: calc(146px + var(--safe-b)); }
     for (let i = 0; i < d.count; i++) {
       let name = d.name;
       if (d.count > 1) { do { n++; name = d.name + ' ' + n; } while (taken.has(name)); taken.add(name); }
-      made.push({ id: uid(), name, kind: d.kind, initiative: d.init, hpMax: d.hpMax, hp: d.hpMax, tempHp: 0, ac: d.ac, conditions: [], notes: '', order: ++maxOrder });
+      made.push({ id: uid(), name, kind: d.kind, initiative: d.init, hpMax: d.hpMax, hp: d.hpMax, tempHp: 0, ac: d.ac, conditions: [], notes: d.notes || '', order: ++maxOrder });
     }
     c.combatants.push.apply(c.combatants, made);
     return made;
@@ -950,12 +1050,14 @@ body[data-screen="combat"] .dice-fab { bottom: calc(146px + var(--safe-b)); }
     $('screen-list').hidden = name !== 'list';
     $('screen-combat').hidden = name !== 'combat';
     $('screen-settings').hidden = name !== 'settings';
+    $('screen-bestiary').hidden = name !== 'bestiary';
     window.scrollTo(0, 0);
     render();
   }
   function render() {
     if (ui.screen === 'combat') renderCombat();
     else if (ui.screen === 'settings') renderSettings();
+    else if (ui.screen === 'bestiary') renderBestiary();
     else renderList();
   }
   function openCombat(id) {
@@ -969,7 +1071,7 @@ body[data-screen="combat"] .dice-fab { bottom: calc(146px + var(--safe-b)); }
     showScreen('list');
   }
 
-  const OVERLAYS = ['action-sheet', 'combatant-form', 'combat-menu-sheet'];
+  const OVERLAYS = ['action-sheet', 'combatant-form', 'combat-menu-sheet', 'bestiary-picker'];
   function showOverlay(id) {
     hideToast(); // un aviso anterior no debe quedarse flotando sobre la hoja
     OVERLAYS.forEach(o => { $(o).hidden = o !== id; });
@@ -1023,6 +1125,7 @@ body[data-screen="combat"] .dice-fab { bottom: calc(146px + var(--safe-b)); }
   function renderList() {
     const list = $('combat-list'); clear(list);
     $('list-empty').hidden = state.combats.length > 0;
+    $('bestiary-count').textContent = plural(state.bestiary.length, 'enemigo', 'enemigos');
     state.combats.forEach(c => {
       const item = el('div', { class: 'item', role: 'button', tabindex: '0', 'data-testid': 'combat-item', 'data-id': c.id,
         onclick: () => openCombat(c.id),
@@ -1240,12 +1343,38 @@ body[data-screen="combat"] .dice-fab { bottom: calc(146px + var(--safe-b)); }
           $('c-hpmax').value = p.hpMax == null ? '' : String(p.hpMax);
           $('c-ac').value = p.ac == null ? '' : String(p.ac);
           $('c-count').value = '1';
+          setFormBeast(null);
           $('c-init').value = ''; $('c-init').focus();
         } }));
     });
+    setFormBeast(null);
     showOverlay('combatant-form');
     $('c-name').focus();
   }
+  // Enemigo del bestiario del que sale el formulario (o null si se escribe a mano). De ahi salen el
+  // bonificador de iniciativa y las notas, que no tienen campo propio en el formulario.
+  function setFormBeast(b) {
+    ui.formBeast = b ? { name: b.name, initBonus: b.initBonus, notes: b.notes } : null;
+    $('c-picked').hidden = !b;
+    $('c-picked').textContent = b ? 'Del bestiario: ' + b.name : '';
+    $('c-roll-result').textContent = '';
+    const bonus = b && b.initBonus ? b.initBonus : 0;
+    $('c-roll-init').textContent = '🎲 Tirar iniciativa (d20' + (bonus ? signed(bonus) : '') + ')';
+    $('c-save-beast').checked = false;
+    syncSaveBeast();
+  }
+  // La casilla de guardar solo tiene sentido para algo que no sea jugador y que no venga ya del bestiario.
+  function syncSaveBeast() {
+    $('c-save-beast-wrap').hidden = !!ui.formBeast || $('c-kind').value === 'player';
+  }
+  $('c-kind').addEventListener('change', syncSaveBeast);
+  $('c-roll-init').addEventListener('click', () => {
+    const bonus = ui.formBeast && ui.formBeast.initBonus ? ui.formBeast.initBonus : 0;
+    const d = rollValue(20);
+    $('c-init').value = String(d + bonus);
+    $('c-roll-result').textContent = bonus ? 'd20 (' + d + ') ' + signed(bonus).replace(/^(.)/, '$1 ') + ' = ' + (d + bonus) : 'd20 = ' + d;
+  });
+  $('c-from-bestiary').addEventListener('click', openPicker);
   $('c-cancel').addEventListener('click', closeOverlays);
   $('combatant-form').addEventListener('submit', e => {
     e.preventDefault();
@@ -1254,11 +1383,22 @@ body[data-screen="combat"] .dice-fab { bottom: calc(146px + var(--safe-b)); }
     const kind = KINDS.includes($('c-kind').value) ? $('c-kind').value : 'enemy';
     const init = toInt($('c-init').value); const hpMax = posInt($('c-hpmax').value); const ac = toInt($('c-ac').value);
     const count = Math.min(posInt($('c-count').value) || 1, 50);
+    // Las notas del bestiario solo se copian si no se ha cambiado el nombre (si no, es otro bicho).
+    const notes = ui.formBeast && ui.formBeast.name === name ? ui.formBeast.notes : '';
+    let saved = '';
+    if (!$('c-save-beast-wrap').hidden && $('c-save-beast').checked) {
+      if (findBeastByName(name)) saved = ' · ya estaba guardado';
+      else {
+        state.bestiary.push({ id: uid(), name, type: null, cr: null, hpMax, ac: ac === undefined ? null : ac, initBonus: null, notes: '' });
+        save(); // commit vuelve a guardar, pero si el combate no cambiase el bestiario no se perderia
+        saved = ' · guardado';
+      }
+    }
     let made = [];
-    commit(c => { made = addCombatants(c, { name, kind, init: init === undefined ? null : init, hpMax, ac: ac === undefined ? null : ac, count }); });
+    commit(c => { made = addCombatants(c, { name, kind, init: init === undefined ? null : init, hpMax, ac: ac === undefined ? null : ac, count, notes }); });
     closeOverlays();
-    if (made.length === 1) toast('Añadido «' + made[0].name + '»');
-    else if (made.length > 1) toast('Añadidos ' + made.length + ' combatientes');
+    if (made.length === 1) toast('Añadido «' + made[0].name + '»' + saved);
+    else if (made.length > 1) toast('Añadidos ' + made.length + ' combatientes' + saved);
   });
 
   // ============================================================ hoja de acciones
@@ -1435,6 +1575,174 @@ body[data-screen="combat"] .dice-fab { bottom: calc(146px + var(--safe-b)); }
     });
   });
 
+  // ============================================================ bestiario
+  // Repertorio de enemigos guardados. Se filtra igual en su pantalla y en el selector de "Añadir".
+  const fold = s => String(s == null ? '' : s).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+  function findBeastByName(name) { const k = fold(name.trim()); return state.bestiary.find(b => fold(b.name) === k) || null; }
+
+  function filterBeasts(f) {
+    const terms = fold(f.q).split(/\s+/).filter(Boolean);
+    const crMin = f.crMin === '' ? null : Number(f.crMin), crMax = f.crMax === '' ? null : Number(f.crMax);
+    const out = state.bestiary.filter(b => {
+      if (f.type && b.type !== f.type) return false;
+      // Con un filtro de VD puesto, los que no tienen VD no entran: no se sabe si cumplen.
+      if (crMin != null && (b.cr == null || b.cr < crMin)) return false;
+      if (crMax != null && (b.cr == null || b.cr > crMax)) return false;
+      const hay = fold(b.name + ' ' + (b.type || '') + ' ' + b.notes);
+      return terms.every(t => hay.includes(t));
+    });
+    const byName = (a, b) => a.name.localeCompare(b.name, 'es', { sensitivity: 'base', numeric: true });
+    // Los que no tienen el dato por el que se ordena van siempre al final.
+    const byNum = (k, dir) => (a, b) => {
+      const an = a[k] == null, bn = b[k] == null;
+      if (an !== bn) return an ? 1 : -1;
+      return (!an && a[k] !== b[k]) ? dir * (a[k] - b[k]) : byName(a, b);
+    };
+    const sorters = { name: byName, 'cr-asc': byNum('cr', 1), 'cr-desc': byNum('cr', -1), 'hp-desc': byNum('hpMax', -1), 'ac-desc': byNum('ac', -1) };
+    return out.sort(sorters[f.sort] || byName);
+  }
+
+  function crOptions(first, mark) { return [el('option', { value: '', text: first })].concat(CRS.map(c => el('option', { value: String(c), text: (mark || '') + 'VD ' + crLabel(c) }))); }
+  // Barra de busqueda y filtros. `prefix` distingue los data-testid de cada instancia.
+  function makeFilters(prefix, onChange) {
+    const f = { q: '', type: '', crMin: '', crMax: '', sort: 'name' };
+    const q = el('input', { type: 'search', 'data-testid': prefix + '-search', placeholder: 'Buscar por nombre, tipo o notas', 'aria-label': 'Buscar enemigo', autocomplete: 'off', enterkeyhint: 'search' });
+    const type = el('select', { 'data-testid': prefix + '-type', 'aria-label': 'Filtrar por tipo' },
+      el('option', { value: '', text: 'Todos los tipos' }), CREATURE_TYPES.map(t => el('option', { value: t, text: t })));
+    const sort = el('select', { 'data-testid': prefix + '-sort', 'aria-label': 'Ordenar' },
+      [['name', 'Orden: nombre'], ['cr-asc', 'Orden: VD ↑'], ['cr-desc', 'Orden: VD ↓'], ['hp-desc', 'Orden: más vida'], ['ac-desc', 'Orden: más CA']]
+        .map(o => el('option', { value: o[0], text: o[1] })));
+    const crMin = el('select', { 'data-testid': prefix + '-crmin', 'aria-label': 'Desafío mínimo' }, crOptions('VD mínimo', '≥ '));
+    const crMax = el('select', { 'data-testid': prefix + '-crmax', 'aria-label': 'Desafío máximo' }, crOptions('VD máximo', '≤ '));
+    const count = el('span', { 'data-testid': prefix + '-count' });
+    const reset = el('button', { type: 'button', class: 'btn btn-sm', 'data-testid': prefix + '-reset', text: 'Quitar filtros' });
+    const read = () => { f.q = q.value; f.type = type.value; f.crMin = crMin.value; f.crMax = crMax.value; f.sort = sort.value; onChange(); };
+    q.addEventListener('input', read);
+    [type, sort, crMin, crMax].forEach(s => s.addEventListener('change', read));
+    reset.addEventListener('click', () => { q.value = ''; type.value = ''; crMin.value = ''; crMax.value = ''; sort.value = 'name'; read(); });
+    const node = el('div', { class: 'filters' }, q, el('div', { class: 'grid-2' }, type, sort), el('div', { class: 'grid-2' }, crMin, crMax),
+      el('div', { class: 'result-line' }, count, reset));
+    return {
+      node, f, q,
+      update(shown) {
+        const active = !!(f.q.trim() || f.type || f.crMin || f.crMax);
+        count.textContent = active ? shown + ' de ' + state.bestiary.length : plural(state.bestiary.length, 'enemigo', 'enemigos');
+        reset.hidden = !active && f.sort === 'name';
+        node.hidden = state.bestiary.length === 0;
+      }
+    };
+  }
+
+  function beastTags(b) {
+    return el('div', { class: 'beast-tags' },
+      b.cr != null ? el('span', { class: 'tag cr', text: 'VD ' + crLabel(b.cr) }) : null,
+      b.type ? el('span', { class: 'tag', text: b.type }) : null,
+      b.hpMax != null ? el('span', { class: 'tag', text: '❤ ' + b.hpMax }) : null,
+      b.ac != null ? el('span', { class: 'tag', title: 'Clase de armadura' }, shieldIcon(), ' ' + b.ac) : null,
+      b.initBonus ? el('span', { class: 'tag', text: 'Ini ' + signed(b.initBonus) }) : null);
+  }
+  function beastMain(b) {
+    return el('div', { class: 'beast-main' },
+      el('div', { class: 'beast-name', 'data-testid': 'beast-name', text: b.name }), beastTags(b),
+      b.notes ? el('div', { class: 'beast-notes', text: b.notes }) : null);
+  }
+  function renderBeastList(listId, emptyId, filters, item) {
+    const list = $(listId); clear(list);
+    const shown = filterBeasts(filters.f);
+    shown.forEach(b => list.appendChild(item(b)));
+    filters.update(shown.length);
+    const empty = $(emptyId);
+    empty.hidden = shown.length > 0;
+    empty.textContent = state.bestiary.length ? 'Ningún enemigo cumple esos filtros.' : 'El bestiario está vacío.';
+  }
+
+  // --- pantalla
+  const bestiaryFilters = makeFilters('bestiary', () => renderBestiary());
+  $('bestiary-filters').appendChild(bestiaryFilters.node);
+  $('b-type').appendChild(el('option', { value: '', text: '—' }));
+  CREATURE_TYPES.forEach(t => $('b-type').appendChild(el('option', { value: t, text: t })));
+  crOptions('—').forEach(o => $('b-cr').appendChild(o));
+
+  function renderBestiary() {
+    renderBeastList('bestiary-list', 'bestiary-empty', bestiaryFilters, b =>
+      el('div', { class: 'beast-item', 'data-testid': 'beast-item', 'data-name': b.name, 'data-id': b.id },
+        beastMain(b),
+        el('div', { class: 'beast-actions' },
+          el('button', { type: 'button', class: 'btn btn-sm', 'data-testid': 'beast-edit', text: 'Editar', 'aria-label': 'Editar ' + b.name, onclick: () => showBeastForm(b) }),
+          el('button', { type: 'button', class: 'btn btn-sm btn-danger', 'data-testid': 'beast-delete', text: 'Borrar', 'aria-label': 'Borrar ' + b.name,
+            onclick: () => confirmDialog({ title: '¿Borrar «' + b.name + '» del bestiario?', message: 'No afecta a los combates ya creados.', yes: 'Borrar' }, () => {
+              state.bestiary = state.bestiary.filter(x => x.id !== b.id);
+              if (ui.editingBeastId === b.id) showBeastForm(false);
+              save(); renderBestiary();
+            }) }))));
+    if (!state.bestiary.length) $('bestiary-empty').textContent = 'El bestiario está vacío. Crea enemigos para añadirlos rápido a cualquier combate.';
+  }
+  // b = enemigo a editar, null = nuevo, false = cerrar el formulario.
+  function showBeastForm(b) {
+    const open = b !== false;
+    ui.editingBeastId = b ? b.id : null;
+    $('beast-form').hidden = !open; $('new-beast').hidden = open;
+    $('b-error').textContent = '';
+    if (!open) return;
+    $('beast-form-title').textContent = b ? 'Editar «' + b.name + '»' : 'Nuevo enemigo';
+    $('b-name').value = b ? b.name : '';
+    $('b-type').value = b && b.type ? b.type : '';
+    $('b-cr').value = b && b.cr != null ? String(b.cr) : '';
+    $('b-hpmax').value = b && b.hpMax != null ? String(b.hpMax) : '';
+    $('b-ac').value = b && b.ac != null ? String(b.ac) : '';
+    $('b-init').value = b && b.initBonus != null ? String(b.initBonus) : '';
+    $('b-notes').value = b ? b.notes : '';
+    window.scrollTo(0, 0);
+    $('b-name').focus();
+  }
+  $('open-bestiary').addEventListener('click', () => { showBeastForm(false); showScreen('bestiary'); });
+  $('bestiary-back').addEventListener('click', () => showScreen('list'));
+  $('new-beast').addEventListener('click', () => showBeastForm(null));
+  $('b-cancel').addEventListener('click', () => showBeastForm(false));
+  $('beast-form').addEventListener('submit', e => {
+    e.preventDefault();
+    const name = $('b-name').value.trim();
+    if (!name) { $('b-error').textContent = 'Escribe un nombre.'; $('b-name').focus(); return; }
+    const dup = findBeastByName(name);
+    if (dup && dup.id !== ui.editingBeastId) { $('b-error').textContent = 'Ya hay un enemigo llamado «' + dup.name + '».'; $('b-name').focus(); return; }
+    const ac = toInt($('b-ac').value), ini = toInt($('b-init').value);
+    const data = normBeast({ name, type: $('b-type').value, cr: $('b-cr').value === '' ? null : Number($('b-cr').value),
+      hpMax: posInt($('b-hpmax').value), ac: ac === undefined ? null : ac, initBonus: ini === undefined ? null : ini, notes: $('b-notes').value.trim() });
+    const editing = ui.editingBeastId && state.bestiary.find(x => x.id === ui.editingBeastId);
+    if (editing) { data.id = editing.id; Object.assign(editing, data); } else state.bestiary.push(data);
+    save(); showBeastForm(false); renderBestiary();
+    toast((editing ? 'Guardado «' : 'Añadido «') + name + '»');
+  });
+
+  // --- selector desde "Añadir combatiente"
+  const pickerFilters = makeFilters('picker', () => renderPicker());
+  $('picker-filters').appendChild(pickerFilters.node);
+  function renderPicker() {
+    renderBeastList('picker-list', 'picker-empty', pickerFilters, b =>
+      el('div', { class: 'beast-item pick', role: 'button', tabindex: '0', 'data-testid': 'pick-item', 'data-name': b.name,
+        onclick: () => pickBeast(b), onkeydown: e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pickBeast(b); } } },
+        beastMain(b)));
+    if (!state.bestiary.length) $('picker-empty').textContent = 'El bestiario está vacío. Créalos en «Bestiario», en la pantalla de combates, o marca «Guardar también en el bestiario» al añadir uno.';
+  }
+  function openPicker() {
+    renderPicker();
+    showOverlay('bestiary-picker');
+  }
+  // Vuelve al formulario sin perder lo que ya estuviera escrito (showOverlay no lo resetea).
+  function backToForm() { showOverlay('combatant-form'); }
+  function pickBeast(b) {
+    $('c-name').value = b.name;
+    $('c-kind').value = 'enemy';
+    $('c-hpmax').value = b.hpMax == null ? '' : String(b.hpMax);
+    $('c-ac').value = b.ac == null ? '' : String(b.ac);
+    $('c-init').value = '';
+    $('c-error').textContent = '';
+    setFormBeast(b);
+    backToForm();
+    $('c-init').focus();
+  }
+  $('picker-close').addEventListener('click', backToForm);
+
   // ============================================================ pantalla: ajustes
   function renderSettings() {
     const list = $('player-list'); clear(list);
@@ -1527,16 +1835,16 @@ body[data-screen="combat"] .dice-fab { bottom: calc(146px + var(--safe-b)); }
       state = next; state.openCombatId = null;
       save(); closeOverlays(); resetPlayerForm();
       $('import-input').value = '';
-      $('import-ok').textContent = 'Importados ' + plural(state.combats.length, 'combate', 'combates') + ' y ' + plural(state.players.length, 'jugador', 'jugadores') + '.';
+      $('import-ok').textContent = 'Importados ' + plural(state.combats.length, 'combate', 'combates') + ', ' + plural(state.players.length, 'jugador', 'jugadores') + ' y ' + plural(state.bestiary.length, 'enemigo', 'enemigos') + ' del bestiario.';
       $('import-ok').hidden = false;
       renderSettings(); toast('Importación correcta: ' + plural(state.combats.length, 'combate', 'combates'));
     };
-    if (state.combats.length || state.players.length) {
-      confirmDialog({ title: '¿Sustituir todos los datos?', message: 'Se reemplazarán ' + plural(state.combats.length, 'combate', 'combates') + ' y ' + plural(state.players.length, 'jugador', 'jugadores') + ' por los del JSON.', yes: 'Importar' }, apply);
+    if (state.combats.length || state.players.length || state.bestiary.length) {
+      confirmDialog({ title: '¿Sustituir todos los datos?', message: 'Se reemplazarán ' + plural(state.combats.length, 'combate', 'combates') + ', ' + plural(state.players.length, 'jugador', 'jugadores') + ' y ' + plural(state.bestiary.length, 'enemigo', 'enemigos') + ' del bestiario por los del JSON.', yes: 'Importar' }, apply);
     } else apply();
   });
   $('wipe-all').addEventListener('click', () => {
-    confirmDialog({ title: '¿Borrar todos los datos?', message: 'Se eliminan todos los combates y jugadores habituales de este dispositivo. No se puede deshacer.', yes: 'Borrar todo' }, () => {
+    confirmDialog({ title: '¿Borrar todos los datos?', message: 'Se eliminan todos los combates, los jugadores habituales y el bestiario de este dispositivo. No se puede deshacer.', yes: 'Borrar todo' }, () => {
       state = emptyState();
       try { localStorage.removeItem(KEY); } catch (e) { /* nada */ }
       resetPlayerForm(); closeOverlays();
@@ -1677,7 +1985,9 @@ body[data-screen="combat"] .dice-fab { bottom: calc(146px + var(--safe-b)); }
     if (e.key !== 'Escape') return;
     if (!$('confirm-dialog').hidden) { closeConfirm(); return; }
     if (!$('dice-dialog').hidden) { closeDice(); return; }
+    if (!$('bestiary-picker').hidden) { backToForm(); return; }
     if (anyOverlayOpen()) { closeOverlays(); return; }
+    if (!$('beast-form').hidden && ui.screen === 'bestiary') { showBeastForm(false); return; }
     if (!$('new-combat-form').hidden) showNewCombatForm(false);
   });
 

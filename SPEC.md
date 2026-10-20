@@ -14,6 +14,14 @@ Clave: `dnd-combate:v1`. Guardar en **cada** cambio de estado (síncrono, nada d
 {
   version: 1,
   players: [ { id, name, hpMax|null, ac|null } ],   // "jugadores habituales" (plantillas para añadir rápido)
+  bestiary: [ {                                      // repertorio de enemigos guardados (opcional al importar)
+      id, name,                                      // nombre único sin distinguir mayúsculas/acentos
+      type: 'Humanoide'|...|null,                    // tipo de criatura 5e (lista cerrada en CREATURE_TYPES)
+      cr: 0|0.125|0.25|0.5|1..30|null,               // valor de desafío
+      hpMax: number|null, ac: number|null,
+      initBonus: number|null,                        // se suma al tirar iniciativa desde "Añadir"
+      notes: ''                                      // se copian al combatiente si se añade sin cambiarle el nombre
+  } ],
   combats: [ {
       id, name, createdAt, updatedAt,
       round: 0,              // 0 = "Preparado" (no iniciado); >=1 en curso
@@ -66,7 +74,19 @@ Ids: cadenas únicas (p. ej. `Date.now().toString(36)+Math.random().toString(36)
 - **Añadir combatiente** → formulario in-page (`combatant-form`): nombre, tipo (select `player|enemy|ally`, por defecto `enemy`), iniciativa, vida máxima, CA, cantidad (por defecto 1). Con cantidad N>1 se crean `Nombre 1 … Nombre N` con los mismos datos. Chips con los **jugadores habituales** (`quick-player`) que al pulsarlos **rellenan el formulario** (nombre, tipo `player`, vida máx y CA) para que el DM escriba la iniciativa y pulse guardar (la iniciativa se tira en cada combate).
   - Si el combate está en curso, el nuevo combatiente se inserta en su posición por iniciativa **sin cambiar** el turno activo ni la ronda.
 
-### 2.3 Ajustes (`screen-settings`)
+  - **Elegir del bestiario** (`c-from-bestiary`) abre el selector (`bestiary-picker`) con los mismos filtros que el bestiario; tocar un enemigo (`pick-item`) vuelve al formulario con nombre, tipo `enemy`, vida y CA rellenos, sin perder la cantidad ya escrita.
+  - **Tirar iniciativa** (`c-roll-init`): d20 + bonificador del enemigo elegido (o d20 a secas) en el campo de iniciativa.
+  - **Guardar también en el bestiario** (`c-save-beast`): solo visible si el tipo no es jugador y no viene del bestiario. Si ya existe uno con ese nombre no se duplica.
+- **Ojo** (`toggle-info`, `aria-pressed`): oculta todo menos iniciativa, nombre y turno; con la información oculta tocar una fila no abre la hoja. Se recuerda por dispositivo en la clave `dnd-combate:ui` (no se exporta).
+
+### 2.3 Bestiario (`screen-bestiary`)
+- Acceso desde la lista (`open-bestiary`, muestra cuántos hay). CRUD: `new-beast` abre el formulario (`beast-form`: `b-name`, `b-type`, `b-cr`, `b-hpmax`, `b-ac`, `b-init`, `b-notes`, `b-save`, `b-cancel`); cada `beast-item` (con `data-name`) tiene `beast-edit` y `beast-delete` (con confirmación). Nombre repetido → error in-page.
+- Filtros (prefijo `bestiary-` en la pantalla, `picker-` en el selector): `-search` (nombre, tipo y notas; sin distinguir mayúsculas ni acentos; varias palabras deben aparecer todas), `-type`, `-crmin`, `-crmax` (los que no tienen VD quedan fuera si hay filtro de VD), `-sort` (`name`, `cr-asc`, `cr-desc`, `hp-desc`, `ac-desc`; los que no tienen el dato van al final), `-count` (`N enemigos` o `N de M`) y `-reset`.
+
+### 2.4 Dados
+- Botón flotante `open-dice` en todas las pantallas → `dice-dialog`. `dice-add` (con `data-sides` 4/6/8/10/12/20/100) añade y tira un dado; cada `die` lleva `data-sides` y, cuando ha caído, `data-value`. `dice-total` (suma de los caídos), `dice-formula` (`2d6 + 1d20`), `dice-reroll`, `dice-remove-last`, `dice-clear`, `dice-close`. Las tiradas viven en memoria.
+
+### 2.5 Ajustes (`screen-settings`)
 - CRUD de jugadores habituales (nombre, vida máx opcional, CA opcional).
 - **Exportar**: muestra el JSON completo del estado en un `textarea` (`export-output`) seleccionable + botón copiar al portapapeles (si `navigator.clipboard` existe).
 - **Importar**: `textarea` (`import-input`) + botón aplicar (`import-apply`): valida que sea JSON con `combats` array; sustituye el estado; errores mostrados in-page (`import-error`).
