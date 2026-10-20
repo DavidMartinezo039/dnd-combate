@@ -1,5 +1,6 @@
 node_modules/
-dist/
+dist/*
+!dist/combates-dnd.apk
 android/app/build/
 android/build/
 android/.gradle/
