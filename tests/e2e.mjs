@@ -508,6 +508,98 @@ await step('360px: sin scroll horizontal en lista y combate', async () => {
   await noHorizontalScroll('lista 360px');
 });
 
+async function diceState() {
+  return page.evaluate(sel => ({
+    dice: Array.from(document.querySelectorAll(sel)).map(e => ({ sides: +e.getAttribute('data-sides'), value: e.hasAttribute('data-value') ? +e.getAttribute('data-value') : null })),
+    total: +document.querySelector('[data-testid="dice-total"]').textContent,
+    formula: document.querySelector('[data-testid="dice-formula"]').textContent
+  }), t('die'));
+}
+async function waitDiceSettled() {
+  await page.waitForFunction(sel => Array.from(document.querySelectorAll(sel)).every(e => e.hasAttribute('data-value')), t('die'));
+}
+
+await step('dados: botón siempre visible, tirar varios, suma, quitar último y quitar todos', async () => {
+  if (!(await visible(t('screen-list')))) throw new Error('se esperaba la lista');
+  if (!(await visible(t('open-dice')))) throw new Error('botón de dados no visible en la lista');
+  await page.click(t('open-dice'));
+  await page.waitForSelector(t('dice-dialog'), { state: 'visible' });
+  eq((await diceState()).dice.length, 0, 'bandeja vacía al abrir');
+  await page.click(`${t('dice-add')}[data-sides="20"]`);
+  await page.click(`${t('dice-add')}[data-sides="6"]`);
+  await page.click(`${t('dice-add')}[data-sides="6"]`);
+  // Mientras ruedan todavía no tienen valor (animación en marcha).
+  eq((await diceState()).dice.filter(d => d.value == null).length > 0, true, 'hay dados rodando justo después de tirar');
+  await waitDiceSettled();
+  let s = await diceState();
+  deepEq(s.dice.map(d => d.sides), [20, 6, 6], 'dados tirados');
+  s.dice.forEach(d => { if (!(d.value >= 1 && d.value <= d.sides)) throw new Error('valor fuera de rango: d' + d.sides + '=' + d.value); });
+  eq(s.total, s.dice.reduce((a, d) => a + d.value, 0), 'suma');
+  eq(s.formula, '2d6 + 1d20', 'fórmula');
+  await shot('08-dados');
+  await page.click(t('dice-remove-last'));
+  const after = await diceState();
+  eq(after.dice.length, 2, 'quitar último deja 2');
+  eq(after.total, s.dice[0].value + s.dice[1].value, 'suma tras quitar último');
+  for (const sides of [4, 8, 10, 12, 100]) await page.click(`${t('dice-add')}[data-sides="${sides}"]`);
+  await waitDiceSettled();
+  s = await diceState();
+  eq(s.dice.length, 7, '7 dados');
+  s.dice.forEach(d => { if (!(d.value >= 1 && d.value <= d.sides)) throw new Error('valor fuera de rango: d' + d.sides + '=' + d.value); });
+  eq(s.total, s.dice.reduce((a, d) => a + d.value, 0), 'suma con todos los tipos');
+  await noHorizontalScroll('modal de dados 360px');
+  await page.click(t('dice-reroll'));
+  await waitDiceSettled();
+  s = await diceState();
+  eq(s.total, s.dice.reduce((a, d) => a + d.value, 0), 'suma tras repetir');
+  await page.click(t('dice-clear'));
+  s = await diceState();
+  eq(s.dice.length, 0, 'quitar todos vacía la bandeja');
+  eq(s.total, 0, 'suma a 0');
+  if (!(await page.isDisabled(t('dice-remove-last')))) throw new Error('quitar último debería estar deshabilitado sin dados');
+  await page.click(t('dice-add') + '[data-sides="20"]');
+  await page.click(t('dice-close'));
+  await page.locator(t('dice-dialog')).waitFor({ state: 'hidden' });
+  // Al reabrir se conservan las tiradas; Escape cierra.
+  await page.click(t('open-dice'));
+  eq((await diceState()).dice.length, 1, 'tirada conservada al reabrir');
+  await page.keyboard.press('Escape');
+  await page.locator(t('dice-dialog')).waitFor({ state: 'hidden' });
+});
+
+await step('ojo: ocultar información deja solo turnos y nombres', async () => {
+  await page.click(t('combat-item'));
+  await page.waitForSelector(t('screen-combat'), { state: 'visible' });
+  if (!(await visible(t('open-dice')))) throw new Error('botón de dados no visible en el combate');
+  const fab = await page.locator(t('open-dice')).boundingBox();
+  const bar = await page.locator('#combat-bar').boundingBox();
+  if (fab.y + fab.height > bar.y) throw new Error('el botón de dados pisa la barra de turnos');
+  await page.click(t('start-combat'));
+  if (!(await visible(`${row('Goblin 1')} ${t('row-hp')}`))) throw new Error('la vida debería verse antes de ocultar');
+  await page.click(t('toggle-info'));
+  eq(await page.getAttribute(t('toggle-info'), 'aria-pressed'), 'true', 'ojo pulsado');
+  const shown = await page.$$eval(t('combatant-row'), rows => rows.map(r => ({
+    name: !!r.querySelector('[data-testid="row-name"]').getClientRects().length,
+    init: !!r.querySelector('[data-testid="row-init"]').getClientRects().length,
+    hp: !!r.querySelector('[data-testid="row-hp"]').getClientRects().length,
+    ac: !!(r.querySelector('.row-ac') && r.querySelector('.row-ac').getClientRects().length)
+  })));
+  shown.forEach((r, i) => { if (!r.name || !r.init || r.hp || r.ac) throw new Error('fila ' + i + ' muestra ' + JSON.stringify(r)); });
+  if (!(await activeName())) throw new Error('el turno activo debería seguir marcado');
+  await shot('09-oculto');
+  await page.click(row('Goblin 1'));
+  if (await visible(t('action-sheet'))) throw new Error('con la información oculta no debe abrirse la hoja');
+  await page.reload({ waitUntil: 'load' });
+  await page.waitForSelector(t('screen-combat'), { state: 'visible' });
+  eq(await page.getAttribute(t('toggle-info'), 'aria-pressed'), 'true', 'el ojo se recuerda al recargar');
+  if (await visible(`${row('Goblin 1')} ${t('row-hp')}`)) throw new Error('vida visible tras recargar oculto');
+  await page.click(t('toggle-info'));
+  if (!(await visible(`${row('Goblin 1')} ${t('row-hp')}`))) throw new Error('la vida debería volver a verse');
+  await openSheet('Goblin 1');
+  await closeSheet();
+  await noHorizontalScroll('combate con ojo 360px');
+});
+
 await step('sin errores de consola ni diálogos nativos', async () => {
   if (pageErrors.length) throw new Error('pageerror: ' + pageErrors.slice(0, 3).join(' || '));
   if (consoleErrors.length) throw new Error('console.error: ' + consoleErrors.slice(0, 3).join(' || '));

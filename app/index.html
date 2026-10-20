@@ -283,6 +283,83 @@ select { appearance: none; -webkit-appearance: none; padding-right: 36px;
   font-weight: 700; font-size: 15px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .chip-btn:active { background: #2a3d63; }
+
+/* ---------- ocultar informacion del combate ---------- */
+/* Con el ojo cerrado la fila solo dice de quien es el turno: iniciativa, nombre y TURNO. Tampoco se
+   delata a los caidos (sin tachado ni fondo propio), que la mesa puede estar mirando la pantalla. */
+.ico-eye { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+#toggle-info[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); border-color: transparent; }
+#screen-combat.info-hidden .row-hp-line,
+#screen-combat.info-hidden .row-ac,
+#screen-combat.info-hidden .row-note,
+#screen-combat.info-hidden .row-conditions { display: none; }
+#screen-combat.info-hidden .row { min-height: 64px; }
+#screen-combat.info-hidden .row.down { background: var(--surface); }
+#screen-combat.info-hidden .row.active.down { background: #2b2312; }
+#screen-combat.info-hidden .row.down .row-name { text-decoration: none; color: var(--text); }
+
+/* ---------- dados ---------- */
+/* Boton flotante: siempre a la vista. En el combate se apoya encima de la barra de turnos (133 px + safe
+   area); el velo de las hojas (20) lo tapa porque va por debajo. */
+.dice-fab {
+  position: fixed; z-index: 15; right: calc(16px + var(--safe-r)); bottom: calc(16px + var(--safe-b));
+  width: 58px; height: 58px; border-radius: 18px; border: 0; background: var(--accent); color: var(--accent-ink);
+  display: flex; align-items: center; justify-content: center; box-shadow: 0 6px 20px rgba(0,0,0,.55);
+}
+.dice-fab:active { filter: brightness(1.12); transform: scale(.96); }
+.dice-fab svg { width: 34px; height: 34px; }
+body[data-screen="combat"] .dice-fab { bottom: calc(146px + var(--safe-b)); }
+/* Hueco para que la ultima fila / boton pueda quedar por encima del boton flotante. */
+.content { padding-bottom: calc(92px + var(--safe-b)); }
+.content-combat { padding-bottom: calc(216px + var(--safe-b)); }
+
+.dice-wrap { z-index: 30; align-items: flex-end; padding: 12px calc(12px + var(--safe-r)) calc(12px + var(--safe-b)) calc(12px + var(--safe-l)); }
+.dice-modal { max-width: 480px; gap: 12px; padding: 14px 16px 16px; max-height: 100%; overflow-y: auto; animation: slideUp .15s ease-out; }
+.dice-head { display: flex; align-items: center; gap: 10px; }
+.dice-head h2 { flex: 1; }
+.dice-total-box { display: flex; align-items: center; gap: 14px; background: #0d0f14; border: 1px solid var(--line); border-radius: 16px; padding: 10px 14px; min-height: 76px; }
+.dice-total { font-size: 46px; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums; color: var(--accent); min-width: 1.4ch; text-align: center; }
+.dice-total.bump { animation: totalBump .3s ease-out; }
+@keyframes totalBump { 40% { transform: scale(1.18); } }
+.dice-formula { flex: 1; font-size: 15px; font-weight: 700; color: var(--muted); line-height: 1.3; overflow-wrap: anywhere; }
+.dice-tray { display: flex; flex-wrap: wrap; gap: 8px; min-height: 72px; max-height: 236px; overflow-y: auto; align-content: flex-start; padding: 2px; }
+.dice-tray-empty { margin: auto; color: var(--dim); font-size: 15px; text-align: center; }
+.die { position: relative; width: 68px; height: 72px; display: flex; flex-direction: column; align-items: center; flex: 0 0 auto; }
+.die-face { position: relative; width: 56px; height: 56px; display: flex; align-items: center; justify-content: center; }
+.die-face svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.die-shape { fill: var(--surface-2); stroke: var(--accent); stroke-width: 4; stroke-linejoin: round; }
+.die-num { position: relative; font-size: 20px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.die-d4 .die-num { top: 8px; font-size: 18px; }
+.die-d100 .die-num { font-size: 18px; }
+.die-label { font-size: 11px; font-weight: 800; letter-spacing: .08em; color: var(--muted); margin-top: 1px; }
+.die.max .die-shape { fill: #5a4410; }
+.die.max .die-num { color: #ffe1a3; }
+.die.min .die-shape { fill: #4a1c20; stroke: var(--dmg); }
+.die.min .die-num { color: #ff9ea2; }
+.die.rolling .die-face { animation: dieTumble .75s cubic-bezier(.25,.6,.4,1); }
+.die.rolling .die-num { color: var(--muted); }
+.die.landed .die-face { animation: dieLand .22s ease-out; }
+@keyframes dieTumble {
+  0% { transform: translate(-46px, -34px) rotate(-260deg) scale(.55); opacity: .3; }
+  35% { transform: translate(10px, 6px) rotate(140deg) scale(1.05); opacity: 1; }
+  60% { transform: translate(-6px, -8px) rotate(300deg) scale(.95); }
+  80% { transform: translate(3px, 2px) rotate(345deg) scale(1.02); }
+  100% { transform: none; }
+}
+@keyframes dieLand { 50% { transform: scale(1.14); } }
+.dice-picker { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.dice-pick {
+  min-height: 60px; border-radius: 14px; border: 1px solid var(--line); background: var(--surface-2); color: var(--text);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; padding: 4px; font-weight: 800; font-size: 15px;
+}
+.dice-pick svg { width: 26px; height: 26px; }
+.dice-pick .die-shape { stroke-width: 7; }
+.dice-pick:active { background: var(--line); }
+.dice-pick.reroll { color: var(--accent); font-size: 14px; }
+.dice-pick:disabled { color: #59606e; background: #16181f; border-color: #232834; }
+@media (prefers-reduced-motion: reduce) {
+  .die.rolling .die-face, .die.landed .die-face, .dice-total.bump { animation: none; }
+}
 </style>
 </head>
 <body>
@@ -316,6 +393,10 @@ select { appearance: none; -webkit-appearance: none; padding-right: 36px;
     <button type="button" class="icon-btn" id="back-to-list" data-testid="back-to-list" aria-label="Volver a la lista">←</button>
     <h1 class="topbar-title" id="combat-title" data-testid="combat-title"></h1>
     <span class="round-pill" id="round-label" data-testid="round-label" aria-live="polite">Preparado</span>
+    <button type="button" class="icon-btn" id="toggle-info" data-testid="toggle-info" aria-pressed="false" aria-label="Ocultar información" title="Ocultar información">
+      <svg class="ico-eye" id="eye-open" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>
+      <svg class="ico-eye" id="eye-closed" viewBox="0 0 24 24" aria-hidden="true" focusable="false" hidden><path d="M3 3l18 18"/><path d="M10.6 5.1A10 10 0 0 1 12 5c6.4 0 10 7 10 7a17 17 0 0 1-3.1 3.9M6.6 6.6A17 17 0 0 0 2 12s3.6 7 10 7a9.6 9.6 0 0 0 5.4-1.6"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/></svg>
+    </button>
   </div></header>
   <div class="content content-combat">
     <div class="rows" id="combatant-list"></div>
@@ -535,6 +616,29 @@ select { appearance: none; -webkit-appearance: none; padding-right: 36px;
   </div>
 </div>
 
+<!-- Dados: boton flotante siempre visible + modal de tiradas -->
+<button type="button" class="dice-fab" id="open-dice" data-testid="open-dice" aria-label="Tirar dados" title="Tirar dados">
+  <svg viewBox="0 0 100 100" aria-hidden="true" focusable="false"><path d="M50 5 91 28v44L50 95 9 72V28z" fill="none" stroke="currentColor" stroke-width="7" stroke-linejoin="round"/><path d="M50 5 30 62h40zM9 28l21 34M91 28 70 62M30 62 50 95l20-33M9 72l21-10M91 72 70 62" fill="none" stroke="currentColor" stroke-width="4.5" stroke-linejoin="round"/></svg>
+</button>
+<div class="modal-wrap dice-wrap" id="dice-dialog" data-testid="dice-dialog" role="dialog" aria-modal="true" aria-labelledby="dice-title" hidden>
+  <div class="modal dice-modal">
+    <div class="dice-head">
+      <h2 id="dice-title">Tirar dados</h2>
+      <button type="button" class="icon-btn" id="dice-close" data-testid="dice-close" aria-label="Cerrar">✕</button>
+    </div>
+    <div class="dice-total-box">
+      <span class="dice-total" id="dice-total" data-testid="dice-total" aria-live="polite">0</span>
+      <span class="dice-formula" id="dice-formula" data-testid="dice-formula"></span>
+    </div>
+    <div class="dice-tray" id="dice-tray" data-testid="dice-tray" aria-label="Dados tirados"></div>
+    <div class="dice-picker" id="dice-picker" aria-label="Elegir dado"></div>
+    <div class="btn-row">
+      <button type="button" class="btn" id="dice-remove-last" data-testid="dice-remove-last">↶ Quitar último</button>
+      <button type="button" class="btn btn-danger" id="dice-clear" data-testid="dice-clear">Quitar todos</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
 
 <script>
@@ -673,8 +777,18 @@ select { appearance: none; -webkit-appearance: none; padding-right: 36px;
     try { localStorage.setItem(KEY, JSON.stringify(serializable(state))); } catch (e) { /* cuota llena o modo privado: seguimos en memoria */ }
   }
 
+  // Preferencias de pantalla de este dispositivo (ojo de ocultar informacion). Van en otra clave: no
+  // son datos del combate, no se exportan ni las borra "Borrar todos los datos".
+  const UI_KEY = 'dnd-combate:ui';
+  function loadHideInfo() {
+    try { const o = JSON.parse(localStorage.getItem(UI_KEY) || '{}'); return !!(o && o.hideInfo === true); } catch (e) { return false; }
+  }
+  function saveUiPrefs() {
+    try { localStorage.setItem(UI_KEY, JSON.stringify({ hideInfo: ui.hideInfo })); } catch (e) { /* seguimos en memoria */ }
+  }
+
   let state = load();
-  const ui = { screen: 'list', sheetId: null, more: false, menuCombatId: null, editingPlayerId: null, notesBefore: '' };
+  const ui = { screen: 'list', sheetId: null, more: false, menuCombatId: null, editingPlayerId: null, notesBefore: '', hideInfo: loadHideInfo() };
 
   // ============================================================ reglas de combate
   function currentCombat() { return state.combats.find(c => c.id === state.openCombatId) || null; }
@@ -831,6 +945,7 @@ select { appearance: none; -webkit-appearance: none; padding-right: 36px;
   // ============================================================ navegación
   function showScreen(name) {
     ui.screen = name;
+    document.body.setAttribute('data-screen', name); // coloca el boton de dados encima de la barra del combate
     hideToast(); // un aviso de otra pantalla no debe quedarse flotando
     $('screen-list').hidden = name !== 'list';
     $('screen-combat').hidden = name !== 'combat';
@@ -998,8 +1113,8 @@ select { appearance: none; -webkit-appearance: none; padding-right: 36px;
       class: 'row kind-' + x.kind + (active ? ' active' : '') + (down ? ' down' : ''), role: 'button', tabindex: '0',
       'data-testid': 'combatant-row', 'data-id': x.id, 'data-name': x.name, 'data-kind': x.kind,
       'data-active': active ? 'true' : 'false', 'data-down': down ? 'true' : 'false',
-      onclick: () => openSheet(x.id),
-      onkeydown: e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openSheet(x.id); } }
+      onclick: () => tapRow(x.id),
+      onkeydown: e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); tapRow(x.id); } }
     });
     // Columna de iniciativa: numero + etiqueta "INI" (el tipo se lee en la franja de color lateral).
     const initCol = el('div', { class: 'row-init-col' },
@@ -1035,6 +1150,12 @@ select { appearance: none; -webkit-appearance: none; padding-right: 36px;
     const c = currentCombat();
     if (!c) { showScreen('list'); return; }
     $('combat-title').textContent = c.name;
+    const hid = ui.hideInfo;
+    $('screen-combat').classList.toggle('info-hidden', hid);
+    const ti = $('toggle-info'); const tiLabel = hid ? 'Mostrar información' : 'Ocultar información';
+    ti.setAttribute('aria-pressed', hid ? 'true' : 'false'); ti.setAttribute('aria-label', tiLabel); ti.title = tiLabel;
+    // toggleAttribute y no .hidden: en un <svg> la propiedad hidden no existe y no haria nada.
+    $('eye-open').toggleAttribute('hidden', hid); $('eye-closed').toggleAttribute('hidden', !hid);
     const rl = $('round-label');
     rl.textContent = c.round > 0 ? 'Ronda ' + c.round : 'Preparado';
     rl.classList.toggle('live', c.round > 0);
@@ -1077,6 +1198,16 @@ select { appearance: none; -webkit-appearance: none; padding-right: 36px;
     if (r.top < top) window.scrollBy(0, r.top - top);
     else if (r.bottom > bottom) window.scrollBy(0, r.bottom - bottom);
   }
+
+  // Con la informacion oculta la hoja no se abre: mostraria la vida que se quiere tapar.
+  function tapRow(id) {
+    if (ui.hideInfo) { toast('Información oculta · pulsa el ojo para verla'); return; }
+    openSheet(id);
+  }
+  $('toggle-info').addEventListener('click', () => {
+    ui.hideInfo = !ui.hideInfo; saveUiPrefs(); renderCombat();
+    toast(ui.hideInfo ? 'Información oculta' : 'Información visible');
+  });
 
   $('back-to-list').addEventListener('click', backToList);
   $('start-combat').addEventListener('click', () => { commit(startCombat); revealActive(); });
@@ -1413,11 +1544,139 @@ select { appearance: none; -webkit-appearance: none; padding-right: 36px;
     });
   });
 
+  // ============================================================ dados
+  // Cada toque en un dado lo anade a la bandeja y lo tira. El valor se decide al tirar; durante la
+  // animacion la cara va cambiando de numero y al caer muestra el bueno. La suma solo cuenta los que
+  // ya han caido. Las tiradas viven en memoria: se conservan al cerrar el modal, no al recargar.
+  const DICE = [4, 6, 8, 10, 12, 20, 100];
+  const DICE_MAX = 40;
+  const ROLL_MS = 750;
+  const DIE_POINTS = { 4: '50,8 94,88 6,88', 8: '50,4 94,50 50,96 6,50', 10: '50,4 94,42 50,96 6,42',
+    12: '50,5 95,38 78,93 22,93 5,38', 20: '50,4 92,27 92,73 50,96 8,73 8,27' };
+  const dice = { list: [], seq: 0 };
+
+  function svgEl(tag, attrs) {
+    const n = document.createElementNS(SVG_NS, tag);
+    Object.keys(attrs).forEach(k => n.setAttribute(k, String(attrs[k])));
+    return n;
+  }
+  function dieShape(sides) {
+    const svg = svgEl('svg', { viewBox: '0 0 100 100', 'aria-hidden': 'true', focusable: 'false' });
+    const s = sides === 6 ? svgEl('rect', { x: 10, y: 10, width: 80, height: 80, rx: 14 })
+      : sides === 100 ? svgEl('circle', { cx: 50, cy: 50, r: 43 })
+      : svgEl('polygon', { points: DIE_POINTS[sides] });
+    s.setAttribute('class', 'die-shape');
+    svg.appendChild(s);
+    return svg;
+  }
+  // Entero uniforme en 1..sides. Con crypto se descartan los valores del tramo final que sesgarian el modulo.
+  function rollValue(sides) {
+    if (window.crypto && crypto.getRandomValues) {
+      const buf = new Uint32Array(1); const lim = Math.floor(0x100000000 / sides) * sides;
+      do crypto.getRandomValues(buf); while (buf[0] >= lim);
+      return buf[0] % sides + 1;
+    }
+    return 1 + Math.floor(Math.random() * sides);
+  }
+  function reducedMotion() { return !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches); }
+
+  function stopDie(d) { clearInterval(d.flicker); clearTimeout(d.timer); }
+  function animateRoll(d) {
+    stopDie(d);
+    d.rolling = true;
+    d.el.classList.remove('landed', 'max', 'min');
+    d.el.removeAttribute('data-value');
+    d.el.setAttribute('aria-label', 'd' + d.sides + ' rodando');
+    d.el.classList.remove('rolling'); void d.el.offsetWidth; d.el.classList.add('rolling'); // reinicia la animación
+    const ms = reducedMotion() ? 0 : ROLL_MS;
+    if (ms) d.flicker = setInterval(() => { d.num.textContent = String(rollValue(d.sides)); }, 60);
+    d.timer = setTimeout(() => settleDie(d), ms);
+  }
+  function settleDie(d) {
+    stopDie(d);
+    d.rolling = false;
+    d.num.textContent = String(d.value);
+    d.el.classList.remove('rolling'); d.el.classList.add('landed');
+    d.el.classList.toggle('max', d.value === d.sides);
+    d.el.classList.toggle('min', d.value === 1);
+    d.el.setAttribute('data-value', String(d.value));
+    d.el.setAttribute('aria-label', 'd' + d.sides + ': ' + d.value);
+    updateDice(!dice.list.some(x => x.rolling)); // la suma "salta" cuando cae el ultimo
+  }
+  function addDie(sides) {
+    if (dice.list.length >= DICE_MAX) { toast('Máximo ' + DICE_MAX + ' dados a la vez'); return; }
+    const d = { id: ++dice.seq, sides, value: rollValue(sides), rolling: true };
+    d.num = el('span', { class: 'die-num', text: String(rollValue(sides)) });
+    d.el = el('div', { class: 'die die-d' + sides, 'data-testid': 'die', 'data-sides': sides, role: 'img' },
+      el('div', { class: 'die-face' }, dieShape(sides), d.num),
+      el('span', { class: 'die-label', text: 'd' + sides }));
+    dice.list.push(d);
+    $('dice-tray').appendChild(d.el);
+    animateRoll(d);
+    updateDice(false);
+    d.el.scrollIntoView({ block: 'nearest' });
+  }
+  function removeDie(d) {
+    stopDie(d);
+    d.el.remove();
+    dice.list.splice(dice.list.indexOf(d), 1);
+  }
+  function rerollAll() {
+    if (!dice.list.length) return;
+    dice.list.forEach(d => { d.value = rollValue(d.sides); animateRoll(d); });
+    updateDice(false);
+  }
+  function updateDice(bump) {
+    const rolling = dice.list.some(d => d.rolling);
+    const total = dice.list.reduce((s, d) => s + (d.rolling ? 0 : d.value), 0);
+    const t = $('dice-total');
+    t.textContent = String(total);
+    t.setAttribute('data-rolling', rolling ? 'true' : 'false');
+    if (bump && dice.list.length) { t.classList.remove('bump'); void t.offsetWidth; t.classList.add('bump'); }
+    const counts = {};
+    dice.list.forEach(d => { counts[d.sides] = (counts[d.sides] || 0) + 1; });
+    const formula = DICE.filter(s => counts[s]).map(s => counts[s] + 'd' + s).join(' + ');
+    $('dice-formula').textContent = dice.list.length ? formula + (rolling ? ' · tirando…' : '') : 'Pulsa un dado para tirarlo. Puedes tirar varios y se suman.';
+    $('dice-empty').hidden = dice.list.length > 0;
+    const none = dice.list.length === 0;
+    $('dice-remove-last').disabled = none; $('dice-clear').disabled = none; $('dice-reroll').disabled = none;
+  }
+
+  function openDice() {
+    hideToast();
+    $('dice-dialog').hidden = false;
+    document.body.classList.add('no-scroll');
+    $('dice-close').focus();
+  }
+  function closeDice() {
+    $('dice-dialog').hidden = true;
+    if (!anyOverlayOpen()) document.body.classList.remove('no-scroll');
+    $('open-dice').focus();
+  }
+
+  $('dice-tray').appendChild(el('p', { class: 'dice-tray-empty', id: 'dice-empty', text: 'Aún no has tirado nada' }));
+  DICE.forEach(s => $('dice-picker').appendChild(el('button', { type: 'button', class: 'dice-pick', 'data-testid': 'dice-add', 'data-sides': s,
+    'aria-label': 'Tirar un d' + s, onclick: () => addDie(s) }, dieShape(s), 'd' + s)));
+  $('dice-picker').appendChild(el('button', { type: 'button', class: 'dice-pick reroll', id: 'dice-reroll', 'data-testid': 'dice-reroll',
+    'aria-label': 'Volver a tirar todos', onclick: rerollAll }, el('span', { style: 'font-size:22px;line-height:1', text: '↻' }), 'Repetir'));
+  $('open-dice').addEventListener('click', openDice);
+  $('dice-close').addEventListener('click', closeDice);
+  $('dice-dialog').addEventListener('click', e => { if (e.target === $('dice-dialog')) closeDice(); });
+  $('dice-remove-last').addEventListener('click', () => {
+    if (!dice.list.length) return;
+    removeDie(dice.list[dice.list.length - 1]); updateDice(true);
+  });
+  $('dice-clear').addEventListener('click', () => {
+    dice.list.slice().forEach(removeDie); updateDice(false);
+  });
+  updateDice(false);
+
   // ============================================================ global
   $('backdrop').addEventListener('click', closeOverlays);
   document.addEventListener('keydown', e => {
     if (e.key !== 'Escape') return;
     if (!$('confirm-dialog').hidden) { closeConfirm(); return; }
+    if (!$('dice-dialog').hidden) { closeDice(); return; }
     if (anyOverlayOpen()) { closeOverlays(); return; }
     if (!$('new-combat-form').hidden) showNewCombatForm(false);
   });
